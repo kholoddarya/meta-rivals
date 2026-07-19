@@ -1,89 +1,149 @@
-import { generateTeams } from '../utils/generator/generateTeams'
-import { DEFAULT_GENERATION_SETTINGS } from '../utils/generator/defaults'
-import { MOCK_HEROES, MOCK_SYNERGY_MATRIX, MOCK_HERO_TIERS } from '../utils/generator/mockData'
-import type { TeamResult, GenerationSettings } from '../utils/generator/types'
+import { runQuickPickGeneration } from '../utils/generator/main'
 
-// Тело запроса, которое шлёт draftStore.generate() (см. app/stores/draft.ts).
-// Названия полей совпадают с GenerationSettings из app/types/hero.ts.
+import type { GeneratorInput, GeneratorOptions, GeneratorResult } from '~/types/generator'
+import type { RoleType } from '~/types/sheets'
+
 interface GenerateRequestBody {
-  teamSize: number
-  minSynergies?: number
-  maxResults?: number
-  useHeroTier?: boolean
-  useSoloSynergies?: boolean
-  useSynergies?: boolean
-  useCounterPicks?: boolean
-  roleCompositions?: string[]
-  mustHaveHeroes?: string[]
-  enemyComposition?: string[]
-  bannedHeroes?: string[]
-}
-
-// Клиентские настройки (упрощённые, без весов/грейдов) объединяем с
-// дефолтами движка — полный редактор весов появится вместе с админкой.
-function toSettings(body: GenerateRequestBody): GenerationSettings {
-  return {
-    ...DEFAULT_GENERATION_SETTINGS,
-    teamSize: body.teamSize,
-    roleCompositions: body.roleCompositions?.length
-      ? body.roleCompositions
-      : DEFAULT_GENERATION_SETTINGS.roleCompositions,
-    minSynergies: body.minSynergies ?? DEFAULT_GENERATION_SETTINGS.minSynergies,
-    maxResults: body.maxResults ?? DEFAULT_GENERATION_SETTINGS.maxResults,
-    useHeroTier: body.useHeroTier ?? DEFAULT_GENERATION_SETTINGS.useHeroTier,
-    useSoloSynergies: body.useSoloSynergies ?? DEFAULT_GENERATION_SETTINGS.useSoloSynergies,
-    useSynergies: body.useSynergies ?? DEFAULT_GENERATION_SETTINGS.useSynergies,
-    useCounterPicks: body.useCounterPicks ?? DEFAULT_GENERATION_SETTINGS.useCounterPicks,
-    mustHaveHeroIds: body.mustHaveHeroes ?? [],
-    enemyHeroIds: body.enemyComposition ?? [],
-    bannedHeroIds: body.bannedHeroes ?? []
-  }
-}
-
-// Приводим внутренний TeamResult к форме, которую ждёт фронт
-// (TeamComposition из app/types/hero.ts) — с героями целиком, а не id/именами.
-function toApiTeam(team: TeamResult) {
-  return {
-    heroes: team.memberIds
-      .map(id => MOCK_HEROES.find(h => h.id === id))
-      .filter((h): h is (typeof MOCK_HEROES)[number] => Boolean(h)),
-    composition: team.finalComposition,
-    totalScore: team.totalScore,
-    synergyScore: team.synergyScore,
-    tierScore: team.tierScore,
-    counterPickScore: team.counterScore,
-    roleScore: team.roleScore,
-    heavyScore: team.heavyScore,
-    synergyCount: team.synergyCount,
-    details: team.details
-  }
+  enemies: string[]
+  myHeroes: string[]
+  roles: RoleType[]
+  options: GeneratorOptions
+  banned: string[]
+  starred: string[]
 }
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody<GenerateRequestBody>(event)
-
-  if (!body?.teamSize) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'teamSize обязателен в теле запроса'
-    })
-  }
-
-  const settings = toSettings(body)
-
+  let body: GenerateRequestBody
   try {
-    const topTeams = generateTeams({
-      heroes: MOCK_HEROES,
-      synergyMatrix: MOCK_SYNERGY_MATRIX,
-      heroTiers: MOCK_HERO_TIERS,
-      settings
-    })
-
-    return topTeams.map(toApiTeam)
-  } catch (e) {
+    body = await readBody<GenerateRequestBody>(event)
+  } catch (error: unknown) {
     throw createError({
       statusCode: 400,
-      statusMessage: e instanceof Error ? e.message : 'Ошибка генерации команд'
+      message: 'Некорректный формат запроса',
     })
   }
+
+  // Валидация обязательных полей
+  if (!body || !Array.isArray(body.roles) || body.roles.length === 0) {
+    throw createError({
+      statusCode: 400,
+      message: 'Необходимо выбрать хотя бы одну роль',
+    })
+  }
+
+  if (!body.options || typeof body.options !== 'object') {
+    throw createError({ statusCode: 400, message: 'Некорректные опции' })
+  }
+
+  // Загружаем данные из Google Sheets
+  const config = useRuntimeConfig()
+  const spreadsheetId = config.spreadsheetId || '1wAGk5Na43fQPArlfj0T8c-HTjj3bs1PLyTKx0NdN-QY'
+  const apiKey = config.googleApiKey
+
+  if (!apiKey) {
+    throw createError({
+      statusCode: 500,
+      message: 'Google API Key не найден в .env',
+    })
+  }
+
+  const sheets = ['FullInfo', 'Class', 'HeroTier', 'Roles'] as const
+  const ranges = sheets.map((s) => `ranges=${encodeURIComponent(s)}`).join('&')
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?${ranges}&key=${apiKey}`
+
+  let sheetsData: { valueRanges: { values: string[][] | undefined }[] }
+  try {
+    sheetsData = await $fetch(url)
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Не удалось загрузить данные'
+    throw createError({ statusCode: 502, message })
+  }
+
+  // Парсим данные
+  const parseSheet = (index: number): Array<Record<string, string | null>> => {
+    const vr = sheetsData.valueRanges[index]
+    if (!vr || !vr.values || vr.values.length === 0) return []
+
+    const [header, ...rows] = vr.values
+    if (!header) return []
+
+    return rows.map((row) => {
+      const entries = header.map((key, idx) => [key, row[idx] ?? null] as [string, string | null])
+      return Object.fromEntries(entries) as Record<string, string | null>
+    })
+  }
+
+  const fullInfoRaw = parseSheet(0)
+  const classRaw = parseSheet(1)
+  const heroTierRaw = parseSheet(2)
+  const rolesRaw = parseSheet(3)
+
+  // Строим rowHeaders из FullInfo (первая колонка "Hero | Anchor")
+  const rowHeaders = fullInfoRaw
+    .map((row) => row['Hero | Anchor'] ?? '')
+    .filter((name) => name.trim() !== '')
+
+  if (rowHeaders.length === 0) {
+    throw createError({
+      statusCode: 500,
+      message: 'Лист FullInfo пуст или не найден',
+    })
+  }
+
+  // Строим rolesMap
+  const rolesMap = new Map<string, RoleType>()
+  for (const row of rolesRaw) {
+    const hero = row['Hero'] ?? ''
+    const role = row['Role'] ?? ''
+    if (hero.trim() && ['sup', 'dps', 'tnk'].includes(role.trim().toLowerCase())) {
+      rolesMap.set(hero.trim(), role.trim().toLowerCase() as RoleType)
+    }
+  }
+
+  // Строим classesMap
+  const classesMap = new Map<string, { class: string; counter: string }>()
+  for (const row of classRaw) {
+    const hero = row['Hero'] ?? ''
+    if (hero.trim()) {
+      classesMap.set(hero.trim(), {
+        class: row['Poke'] ?? '',
+        counter: row['Anti-Dive'] ?? '',
+      })
+    }
+  }
+
+  // Строим heroTiersList
+  const heroTiersList: Array<{ hero: string; tier: string }> = []
+  for (const row of heroTierRaw) {
+    const hero = row['Hero'] ?? ''
+    const tier = row['Tier'] ?? ''
+    if (hero.trim() && tier.trim()) {
+      heroTiersList.push({
+        hero: hero.trim(),
+        tier: tier.trim().toUpperCase(),
+      })
+    }
+  }
+
+  // Формируем входные данные для генератора
+  const input: GeneratorInput = {
+    enemies: body.enemies || [],
+    myHeroes: body.myHeroes || [],
+    roles: body.roles,
+    options: body.options,
+    banned: body.banned || [],
+    starred: body.starred || [],
+  }
+
+  // Запускаем генерацию
+  const result: GeneratorResult = runQuickPickGeneration(
+    input,
+    rowHeaders,
+    fullInfoRaw,
+    rolesMap,
+    classesMap,
+    heroTiersList
+  )
+
+  return result
 })

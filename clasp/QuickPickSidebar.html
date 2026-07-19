@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= include('QuickPickStyles'); ?>
+</head>
+<body>
+  <div class="main-container">
+    <div style="display:none;"><h3>⚡ Быстрый подбор</h3></div>
+    
+    <!-- 🆕 Блок "Ваш состав" — отображается при выборе -->
+    <div class="current-composition" id="currentComposition" style="display:none;">
+      <div class="label">📋 Ваш состав:</div>
+      <div class="heroes" id="currentMyHeroes"></div>
+      <div class="label" style="margin-top:6px;">👹 Против:</div>
+      <div class="heroes" id="currentEnemies"></div>
+      <div class="label" style="margin-top:6px;">⭐ Ключевые враги:</div>
+      <div class="heroes" id="currentStars"></div>
+      <div class="label" style="margin-top:6px;">🚫 Баны:</div>
+      <div class="heroes" id="currentBans"></div>
+      <div class="label" style="margin-top:6px;">🎯 Нужные роли:</div>
+      <div class="heroes" id="currentRoles"></div>
+    </div>
+    
+    <!-- Роли — над таблицей -->
+    <div class="section">
+      <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div class="section-title" style="margin:0;">🎯 Нужные роли (+/-)</div>
+        <button class="clear-btn" onclick="clearRoles()" title="Очистить роли">✕ Сброс</button>
+      </div>
+      <div class="role-selector">
+        <!-- 🆕 Иконка Sup изменена с 🛡️ на ✚ -->
+        <div class="role-counter sup">
+          <div class="role-label">✚ Sup</div>
+          <div class="role-controls">
+            <button class="role-btn" onclick="changeRole('sup', -1)">−</button>
+            <div class="role-value" id="roleSup">0</div>
+            <button class="role-btn" onclick="changeRole('sup', 1)">+</button>
+          </div>
+        </div>
+        <div class="role-counter dps">
+          <div class="role-label">⚔️ DPS</div>
+          <div class="role-controls">
+            <button class="role-btn" onclick="changeRole('dps', -1)">−</button>
+            <div class="role-value" id="roleDps">0</div>
+            <button class="role-btn" onclick="changeRole('dps', 1)">+</button>
+          </div>
+        </div>
+        <div class="role-counter tnk">
+          <div class="role-label">🛡️ Tnk</div>
+          <div class="role-controls">
+            <button class="role-btn" onclick="changeRole('tnk', -1)">−</button>
+            <div class="role-value" id="roleTnk">0</div>
+            <button class="role-btn" onclick="changeRole('tnk', 1)">+</button>
+          </div>
+        </div>
+        <div class="role-counter flx">
+          <div class="role-label">🎲 FLX</div>
+          <div class="role-controls">
+            <button class="role-btn" onclick="changeRole('flx', -1)">−</button>
+            <div class="role-value" id="roleFlx">0</div>
+            <button class="role-btn" onclick="changeRole('flx', 1)">+</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:#666;">
+        Всего: <b id="totalRoles">0</b> / 6 · <span style="color:#ff8f00;">🎲 FLX до 3 — автоподбор лучшей роли</span>
+      </div>
+    </div>
+    
+        <!-- Двумерная сетка героев -->
+    <div class="section">
+      <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div class="section-title" style="margin:0;">👥 Герои</div>
+        <div style="display:flex;gap:4px;">
+          <button class="clear-btn" onclick="clearEnemies()" title="Очистить врагов">⚔️✕</button>
+          <button class="clear-btn" onclick="clearStars()" title="Очистить звёзды">⭐✕</button>
+          <button class="clear-btn" onclick="clearMyHeroes()" title="Очистить своих">👥✕</button>
+          <button class="clear-btn" onclick="clearBans()" title="Очистить баны">🚫✕</button>
+          <button class="clear-btn clear-all" onclick="clearAll()" title="Очистить все списки">🗑️ Всё</button>
+        </div>
+      </div>
+      <input type="text" class="search-box" id="heroSearch" placeholder="🔍 Поиск по имени...">
+      <div class="role-filters" id="roleFilters">
+        <button class="role-filter-btn active" data-role="all" onclick="filterByRole('all')">Все</button>
+        <button class="role-filter-btn" data-role="sup" onclick="filterByRole('sup')">✚ Sup</button>
+        <button class="role-filter-btn" data-role="dps" onclick="filterByRole('dps')">⚔️ DPS</button>
+        <button class="role-filter-btn" data-role="tnk" onclick="filterByRole('tnk')">🛡️ Tnk</button>
+      </div>
+      
+      <div class="counters-row">
+        <span class="counter-badge enemy">⚔️ Враги: <b id="enemyCount">0</b>/6</span>
+        <span class="counter-badge star">⭐ Ключевые: <b id="starCount">0</b>/2</span>
+        <span class="counter-badge my">👥 Мои: <b id="myCount">0</b>/5</span>
+        <span class="counter-badge ban">🚫 Баны: <b id="banCount">0</b></span>
+      </div>
+      
+      <div class="heroes-grid" id="heroesGrid">
+        <!-- Заполняется из JS -->
+      </div>
+    </div>
+    
+    <div class="options-section collapsed" id="optionsSection">
+      <div class="options-header" onclick="toggleOptionsSection()">
+        <div class="section-title" style="margin:0;">⚙️ Учитывать</div>
+        <span class="options-toggle" id="optionsToggle">▶</span>
+      </div>
+      <div class="options-body">
+        <label><input type="checkbox" id="useSynergies" checked> Синергии</label>
+        <label><input type="checkbox" id="useSoloSynergies" checked> Соло-синергии</label>
+        <label><input type="checkbox" id="useTiers" checked> Тиры героев</label>
+        <label><input type="checkbox" id="useCounterPicks" checked> Контрпики</label>
+        <label><input type="checkbox" id="useClassWeights" checked> Веса классов</label>
+        <label><input type="checkbox" id="useAntiRoleWeights" checked> Веса анти-ролей</label>
+        
+                <!-- 🆕 Количество отображаемых команд — без верхнего лимита -->
+        <div class="options-divider"></div>
+        <div class="options-row">
+          <label for="maxResultsInput" style="margin:0;">📊 Команд в результате:</label>
+          <input type="number" id="maxResultsInput" min="1" value="10" 
+                 onchange="updateMaxResults(this.value)" 
+                 onkeyup="updateMaxResults(this.value)"
+                 style="width:70px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;text-align:center;">
+        </div>
+        <div style="font-size:10px;color:#888;margin-top:2px;padding-left:2px;">
+          Скрипт ищет ВСЕ возможные команды, показывает лучшие. Больше команд = дольше.
+        </div>
+      </div>
+    </div>
+    
+    <button class="generate-btn" id="generateBtn" onclick="generateTeams()" disabled>
+      🚀 Подобрать команду
+    </button>
+    
+    <div class="spinner" id="spinner">
+      <div class="circle"></div>
+      <p>Подбираем лучшую команду...</p>
+    </div>
+    
+    <div class="results" id="results">
+      <!-- 🆕 Заголовок вставляется динамически из showResults() -->
+      <div id="resultsList"></div>
+    </div>
+  </div>
+  
+  <?!= include('QuickPickScript'); ?>
+</body>
+</html>

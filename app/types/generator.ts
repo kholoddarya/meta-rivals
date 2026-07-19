@@ -1,4 +1,5 @@
-import type { RoleType } from "~/types/sheets";
+// types/generator.ts
+import type { RoleType } from "./sheets";
 
 export interface GeneratorOptions {
   useSynergies: boolean;

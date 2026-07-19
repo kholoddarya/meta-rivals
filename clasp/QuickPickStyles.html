@@ -1,0 +1,907 @@
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    background: #fafafa;
+  }
+  
+  .main-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+  }
+  
+  h3 { margin: 0 0 12px 0; color: #1976d2; font-size: 16px; }
+  
+  .section {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 6px;
+  }
+  .section-title { 
+    font-weight: bold; 
+    color: #333; 
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  
+  .clear-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .clear-btn:hover {
+    background: #ffebee;
+    border-color: #ef9a9a;
+  }
+  
+  .role-counter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 5px 4px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    background: white;
+  }
+  .role-counter .role-label { font-size: 11px; font-weight: bold; margin-bottom: 3px; }
+  .role-counter .role-controls { display: flex; align-items: center; gap: 2px; }
+  .role-counter .role-btn {
+    width: 22px; height: 22px;
+    border: 1px solid #ccc; border-radius: 3px;
+    background: #f5f5f5; cursor: pointer;
+    font-weight: bold; font-size: 14px;
+    line-height: 20px; text-align: center; padding: 0;
+  }
+  .role-counter .role-btn:hover { background: #e3f2fd; border-color: #1976d2; }
+  .role-counter .role-value { width: 20px; text-align: center; font-weight: bold; font-size: 13px; }
+  .role-counter.sup { border-color: #2e7d32; }
+  .role-counter.sup .role-label { color: #2e7d32; }
+  .role-counter.dps { border-color: #c2185b; }
+  .role-counter.dps .role-label { color: #c2185b; }
+  .role-counter.tnk { border-color: #1565c0; }
+  .role-counter.tnk .role-label { color: #1565c0; }
+  .role-counter.flx { border-color: #ff8f00; }
+  .role-counter.flx .role-label { color: #ff8f00; }
+  
+  /* 🆕 Сетка 4 колонки для ролей */
+  .role-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 6px;
+  }
+  
+  /* Поиск и фильтры */
+  .search-box {
+    width: 100%;
+    padding: 6px;
+    margin-bottom: 6px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 13px;
+  }
+  .role-filters {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .role-filter-btn {
+    padding: 4px 10px;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    background: white;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: bold;
+    transition: all 0.15s;
+  }
+  .role-filter-btn:hover { background: #e3f2fd; border-color: #1976d2; }
+  .role-filter-btn.active { background: #1976d2; color: white; border-color: #1976d2; }
+  
+  /* 🆕 Двумерная сетка героев */
+  .heroes-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    max-height: 450px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+    padding: 6px;
+  }
+  
+  /* 🆕 Карточка героя */
+  .hero-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 6px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: all 0.15s;
+    min-height: 60px;
+  }
+  .hero-card:hover { background: #fafafa; }
+  
+  /* Подсветка статусов */
+  .hero-card.is-enemy { background: #ffebee; border-color: #ef9a9a; }
+  .hero-card.is-my { background: #e8f5e9; border-color: #a5d6a7; }
+  .hero-card.is-ban { background: #f5f5f5; border-color: #9e9e9e; opacity: 0.7; }
+  .hero-card.is-enemy.is-my { 
+    background: linear-gradient(135deg, #ffebee 50%, #e8f5e9 50%); 
+    border-color: #ef9a9a;
+  }
+  
+  .hero-name {
+    font-weight: 500;
+    font-size: 12px;
+    line-height: 1.2;
+    word-break: break-word;
+  }
+  
+  .hero-role {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 2px;
+    align-self: flex-start;
+  }
+  .hero-role.sup { background: #c8e6c9; color: #2e7d32; }
+  .hero-role.dps { background: #f8bbd0; color: #c2185b; }
+  .hero-role.tnk { background: #bbdefb; color: #1565c0; }
+  .hero-role.unknown { background: #eee; color: #666; }
+  
+  .hero-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 6px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: all 0.15s;
+    min-height: 70px;
+  }
+  
+  .hero-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .hero-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-left: 38px;
+  }
+  
+  /* Кнопки статуса */
+  .status-buttons {
+    display: flex;
+    gap: 2px;
+    margin-top: auto;
+  }
+  .status-btn {
+    flex: 1;
+    height: 22px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    background: white;
+    cursor: pointer;
+    font-size: 11px;
+    line-height: 20px;
+    text-align: center;
+    padding: 0;
+    transition: all 0.15s;
+  }
+  .status-btn:hover { background: #f0f0f0; }
+  .status-btn.active-enemy { background: #ef5350; color: white; border-color: #c62828; }
+  .status-btn.active-my { background: #66bb6a; color: white; border-color: #2e7d32; }
+  .status-btn.active-ban { background: #424242; color: white; border-color: #000; }
+  
+  /* 🆕 Счётчики — над таблицей, более заметные */
+  .counters-row {
+    display: flex;
+    gap: 8px;
+    margin: 8px 0;
+    padding: 6px 8px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .counter-badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 12px;
+  }
+  .counter-badge.enemy { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+  .counter-badge.my { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+  .counter-badge.ban { background: #f5f5f5; color: #424242; border: 1px solid #bdbdbd; }
+  .counter-badge b { font-size: 13px; }
+  
+  /* Кнопка генерации */
+  .generate-btn {
+    width: 100%;
+    padding: 10px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    margin-top: 10px;
+  }
+  .generate-btn:hover:not(:disabled) { background: #45a049; }
+  .generate-btn:disabled { background: #ccc; cursor: not-allowed; }
+  
+  .spinner { display: none; text-align: center; padding: 20px; }
+  .spinner .circle {
+    display: inline-block;
+    width: 30px; height: 30px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #4CAF50;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  
+  .result-item {
+    margin-bottom: 8px;
+    background: white;
+    border-radius: 6px;
+    border-left: 3px solid #4CAF50;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    overflow: hidden;
+  }
+  
+  .result-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .result-header:hover { background: #f5f5f5; }
+  
+  .result-rank {
+    display: inline-block;
+    width: 22px; height: 22px;
+    background: #4CAF50;
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 22px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .result-main { flex: 1; min-width: 0; }
+  .result-heroes { font-weight: bold; color: #2e7d32; font-size: 13px; }
+  .result-score { font-size: 11px; color: #666; margin-top: 2px; }
+  
+  .result-details {
+    display: none;
+    padding: 0 10px 10px 10px;
+    background: #fafafa;
+    border-top: 1px dashed #ddd;
+  }
+  .result-item.expanded .result-details { display: block; }
+ 
+  .base-hero .role-icon {
+    font-size: 10px;
+  }
+
+    /* 🆕 Иконки героев в составах */
+  .hero-icon-small {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    object-fit: cover;
+    margin-right: 4px;
+    vertical-align: middle;
+    border: 1px solid #e0e0e0;
+  }
+  
+  .hero-icon-fallback-small {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 9px;
+    font-weight: bold;
+    margin-right: 4px;
+    vertical-align: middle;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+  
+  .hero-icon-tiny {
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    object-fit: cover;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  
+  .hero-icon-wrapper {
+    display: inline-block;
+    margin-right: 4px;
+  }
+  
+  .hero-name-small {
+    font-weight: 500;
+    font-size: 11px;
+  }
+  
+  .role-icon {
+    font-size: 10px;
+    margin-left: 2px;
+  }
+
+  /* 🆕 Результаты — улучшенная читаемость */
+  .results {
+    display: none;
+    margin-top: 12px;
+  }
+  
+  .results-summary {
+    padding: 8px 12px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 10px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .results-summary .summary-badge {
+    padding: 2px 8px;
+    background: white;
+    border-radius: 10px;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  /* Группа команды */
+  .team-group {
+    margin-bottom: 8px;
+    background: white;
+    border-radius: 8px;
+    border-left: 4px solid #4CAF50;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .team-group.multi {
+    border-left-color: #ff9800;
+  }
+  
+  .group-header {
+    display: flex;
+    align-items: flex-start;
+    padding: 10px 12px;
+    cursor: pointer;
+    user-select: none;
+    gap: 10px;
+  }
+  .group-header:hover {
+    background: #fafafa;
+  }
+  
+  .group-rank {
+    display: inline-block;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 8px;
+    background: #4CAF50;
+    color: white;
+    border-radius: 12px;
+    text-align: center;
+    line-height: 24px;
+    font-size: 13px;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+  .team-group.multi .group-rank {
+    background: #ff9800;
+  }
+  
+  .group-main {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  /* 🆕 Базовые герои — увеличенный размер */
+  .group-base {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .base-hero {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: #e8f5e9;
+    border: 1px solid #81c784;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1b5e20;
+  }
+  .team-group.multi .base-hero {
+    background: #fff3e0;
+    border-color: #ffcc80;
+    color: #e65100;
+  }
+  .base-hero.has-alt {
+    background: #fff8e1;
+    border-color: #ffc107;
+    border-style: dashed;
+    cursor: help;
+  }
+  .hero-role-chip {
+    font-size: 12px;
+    margin-right: 2px;
+  }
+  
+  /* 🆕 Слоты альтернатив */
+  .slot-alternatives {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .slot-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: #fff8e1;
+    border: 1px dashed #ffc107;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .slot-label {
+    color: #f57c00;
+    font-weight: 500;
+  }
+  .slot-select {
+    padding: 3px 6px;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    background: white;
+    font-size: 13px;
+    cursor: pointer;
+    max-width: 200px;
+  }
+
+  /* 🆕 Индивидуальный вес героя */
+  .hero-weight {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 1px 5px;
+    background: #e3f2fd;
+    color: #1565c0;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: bold;
+    vertical-align: middle;
+  }
+  
+  /* 🆕 Бейдж общего веса команды */
+  .group-meta .meta-badge.weight {
+    background: #fce4ec;
+    color: #ad1457;
+    font-weight: bold;
+  }
+  
+  /* 🆕 Мета-информация — увеличенный размер */
+  .group-meta {
+    font-size: 12px;
+    color: #666;
+    margin-top: 6px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .group-meta .meta-badge {
+    padding: 2px 8px;
+    background: #f5f5f5;
+    border-radius: 10px;
+    font-weight: 500;
+    font-size: 12px;
+  }
+  .group-meta .meta-badge.composition {
+    background: #e3f2fd;
+    color: #1565c0;
+    font-weight: bold;
+  }
+  .group-meta .meta-badge.variants {
+    background: #fff3e0;
+    color: #e65100;
+  }
+  
+  .expand-icon {
+    flex-shrink: 0;
+    width: 18px;
+    text-align: center;
+    color: #999;
+    font-size: 13px;
+    transition: transform 0.2s;
+    margin-left: 6px;
+    margin-top: 6px;
+  }
+  .team-group.expanded .expand-icon {
+    transform: rotate(90deg);
+  }
+  
+  /* 🆕 Детали — увеличенный размер */
+  .group-details {
+    display: none;
+    padding: 8px 12px 12px 12px;
+    background: #fafafa;
+    border-top: 1px dashed #ddd;
+    font-size: 13px;
+  }
+  .team-group.expanded .group-details {
+    display: block;
+  }
+  
+  /* 🆕 Иконка роли в карточке состава (базовые герои) */
+  .hero-role-chip {
+    display: inline-block;
+    margin-right: 4px;
+    font-size: 10px;
+    vertical-align: middle;
+  }
+
+  .detail-block {
+    margin-top: 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background: white;
+    overflow: hidden;
+  }
+  .detail-block-header {
+    padding: 8px 12px;
+    background: #f5f5f5;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: bold;
+    color: #444;
+  }
+  .detail-block-header:hover {
+    background: #eeeeee;
+  }
+  .detail-block-header .block-icon {
+    margin-right: 6px;
+    font-size: 14px;
+  }
+  .detail-block-header .block-toggle {
+    font-size: 11px;
+    color: #999;
+    transition: transform 0.2s;
+  }
+  .detail-block.expanded .block-toggle {
+    transform: rotate(90deg);
+  }
+  
+  .detail-block-content {
+    display: none;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-top: 1px solid #e0e0e0;
+  }
+  .detail-block.expanded .detail-block-content {
+    display: block;
+  }
+  
+  .detail-row {
+    display: flex !important;
+    align-items: flex-start;
+    padding: 3px 0;
+    line-height: 1.5;
+    font-size: 13px;
+  }
+  .detail-text {
+    flex: 1;
+    min-width: 0;
+    color: #333;
+  }
+  .detail-positive {
+    color: #2e7d32;
+  }
+  .detail-negative {
+    color: #c62828;
+  }
+  .detail-neutral {
+    color: #666;
+    font-style: italic;
+  }
+  .detail-star {
+    color: #f57f17 !important;
+    font-weight: bold;
+  }
+
+  /* 🆕 Блок "Ваш состав" — нейтральный фон для контраста с чипами */
+  .current-composition {
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #ffffff;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    border-left: 4px solid #4CAF50;
+    font-size: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .current-composition .label {
+    font-weight: bold;
+    color: #2e7d32;
+    margin-bottom: 4px;
+    margin-top: 6px;
+    font-size: 12px;
+  }
+  .current-composition .label:first-child {
+    margin-top: 0;
+  }
+  .current-composition .heroes {
+    padding: 4px 0;
+    min-height: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+  }
+  .current-composition .empty {
+    color: #999;
+    font-style: italic;
+  }
+  
+  /* 🆕 Чипы героев — яркие на нейтральном фоне */
+  .hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: #e8f5e9;
+    border: 1px solid #81c784;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #1b5e20;
+    vertical-align: middle;
+  }
+  .chip-role-icon {
+    font-size: 11px;
+    line-height: 1;
+  }
+
+    /* 🆕 Ключевые враги */
+  .counter-badge.star {
+    background: #fff9c4;
+    color: #f57f17;
+    border: 1px solid #ffd54f;
+  }
+  
+  .status-btn.active-star {
+    background: #fdd835;
+    color: #4e342e;
+    border-color: #f9a825;
+  }
+  
+  .hero-card.is-starred {
+    border: 2px solid #fdd835;
+    box-shadow: 0 0 8px rgba(253, 216, 53, 0.5);
+  }
+  
+  .hero-chip.enemy.starred {
+    background: #fff9c4;
+    border-color: #fdd835;
+    color: #4e342e;
+  }
+  
+  .chip-star-icon {
+    color: #f57f17;
+    font-size: 12px;
+  }
+
+    /* 🆕 Кликабельные чипы */
+  .hero-chip.clickable {
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .hero-chip.clickable:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
+  }
+  .hero-chip.clickable:active {
+    transform: translateY(0);
+  }
+  
+  /* 🆕 Крестик удаления */
+  .chip-remove {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0 3px;
+    font-size: 10px;
+    line-height: 14px;
+    color: rgba(0,0,0,0.4);
+    border-radius: 50%;
+    transition: all 0.15s;
+  }
+  .hero-chip.clickable:hover .chip-remove {
+    color: #c62828;
+    background: rgba(198, 40, 40, 0.1);
+  }
+  
+  /* 🆕 Чип бана */
+  .hero-chip.ban {
+    background: #f5f5f5;
+    border-color: #bdbdbd;
+    color: #424242;
+  }
+  
+  /* 🆕 Кнопка "Очистить всё" */
+  .clear-btn.clear-all {
+    background: #ffebee;
+    border-color: #ef9a9a;
+    color: #c62828;
+    font-weight: bold;
+  }
+  .clear-btn.clear-all:hover {
+    background: #ffcdd2;
+    border-color: #e57373;
+  }
+  
+  /* 🆕 Сворачиваемая секция "Учитывать" */
+  .options-section {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: #fff8e1;
+    border-radius: 6px;
+    border-left: 4px solid #ffc107;
+    transition: all 0.2s;
+  }
+  .options-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 0;
+  }
+  .options-header:hover {
+    opacity: 0.8;
+  }
+  .options-toggle {
+    font-size: 11px;
+    color: #666;
+    transition: transform 0.2s;
+  }
+  .options-body {
+    max-height: 300px;
+    overflow: hidden;
+    transition: max-height 0.25s ease, margin-top 0.25s ease, opacity 0.2s ease;
+    margin-top: 8px;
+    opacity: 1;
+  }
+  .options-section.collapsed .options-body {
+    max-height: 0;
+    margin-top: 0;
+    opacity: 0;
+  }
+  .options-section label {
+    display: block;
+    padding: 2px 0;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .options-section label input {
+    margin-right: 6px;
+  }
+
+    /* 🆕 Разделитель в секции опций */
+  .options-divider {
+    height: 1px;
+    background: rgba(0,0,0,0.1);
+    margin: 8px 0;
+  }
+  
+  /* 🆕 Строка с label и input */
+  .options-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  
+  .options-row label {
+    flex: 1;
+    margin: 0 !important;
+    font-weight: 500;
+  }
+  
+  .options-row input[type="number"] {
+    font-size: 13px;
+    font-weight: bold;
+  }
+  
+  .options-row input[type="number"]:focus {
+    outline: 2px solid #ffc107;
+    border-color: #ffc107;
+  }
+
+  /* 🆕 Индикатор пересчёта оценки */
+  .evaluation-loading {
+    display: inline-flex;
+    align-items: center;
+    color: #ff9800;
+    font-size: 11px;
+    font-weight: 500;
+    margin-left: 8px;
+    padding: 1px 8px;
+    background: #fff3e0;
+    border-radius: 8px;
+  }
+  
+  .loading-spinner {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 2px solid #ff9800;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin-loading 0.8s linear infinite;
+    margin-right: 5px;
+  }
+  
+  @keyframes spin-loading {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>

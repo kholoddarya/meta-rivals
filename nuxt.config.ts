@@ -1,4 +1,3 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
@@ -6,17 +5,34 @@ export default defineNuxtConfig({
   modules: [
     '@pinia/nuxt',
     '@vueuse/nuxt',
-    '@nuxtjs/tailwindcss',
-    '@nuxt/eslint'
+    '@nuxt/eslint',
+    '@nuxt/ui',
+    'pinia-plugin-persistedstate/nuxt',
+    '@nuxtjs/i18n',
   ],
 
-  // Приватные ключи видны только на сервере (Nitro), public — доступны и на клиенте.
-  // Реальные значения кладём в .env, сюда — только дефолты/ссылки на env.
+  css: ['~/assets/css/main.css'],
+
+  i18n: {
+    locales: [
+      { code: 'en', iso: 'en-US', name: 'English', file: 'en.json' },
+      { code: 'ru', iso: 'ru-RU', name: 'Русский', file: 'ru.json' },
+    ],
+    langDir: 'locales', // Папка с файлами переводов
+    defaultLocale: 'en',
+    strategy: 'no_prefix', // URL не будут меняться
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'i18n_redirected',
+      redirectOn: 'root',
+    },
+  },
+
   runtimeConfig: {
-    databaseUrl: process.env.DATABASE_URL || '',
-    googleSheetsId: process.env.GOOGLE_SHEETS_ID,
+    googleApiKey: process.env.NUXT_GOOGLE_API_KEY,
+    spreadsheetId: process.env.NUXT_PUBLIC_SPREADSHEET_ID,
     public: {
-      appName: 'MetaRivals'
-    }
-  }
+      appName: 'MetaRivals',
+    },
+  },
 })

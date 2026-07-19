@@ -1,0 +1,59 @@
+{
+  "title": "Quick Team Builder",
+  "subtitle": "Mark enemies, your heroes, and roles — the generator will build a lineup considering tiers, synergies, and counter-picks.",
+  "heroes": "Heroes",
+  "searchPlaceholder": "Search hero...",
+  "rolesToDraft": "Roles to Draft",
+  "parameters": "Parameters",
+  "generate": "Generate",
+  "clear": "Clear",
+  "result": "Result",
+  "otherTools": "Other Tools",
+  "totalRoles": "Total: {count} / 6",
+  
+  "roles": {
+    "sup": "Support",
+    "dps": "Damage",
+    "tnk": "Tank",
+    "flx": "Flex"
+  },
+
+  "tooltip": {
+    "enemy": "Enemy",
+    "ally": "My Hero",
+    "keyEnemy": "Key Enemy",
+    "ban": "Ban"
+  },
+
+  "param": {
+    "synergies": "Synergies",
+    "soloSynergies": "Solo Synergies",
+    "tiers": "Consider Tiers",
+    "counterPicks": "Counter-picks",
+    "classWeights": "Class Weights",
+    "antiRoleWeights": "Anti-role Weights"
+  },
+
+  "pages": {
+    "duo": {
+      "title": "Duo",
+      "description": "Team building for two heroes, focusing on bonds and synergies between the pair."
+    },
+    "trio": {
+      "title": "Trio",
+      "description": "A combination of three heroes — balancing roles and team bonuses for a small group."
+    },
+    "quadro": {
+      "title": "Quad",
+      "description": "A four-player party — expanded role selection and counter-picks against enemies."
+    },
+    "team": {
+      "title": "Full Team",
+      "description": "Generates a 6-hero lineup based on player preferences, taking into account tiers, classes, and counter-picks."
+    },
+    "teamups": {
+      "title": "Team-Ups",
+      "description": "Theoretically the strongest team compositions based on team-ups and current hero meta strength."
+    }
+  }
+}
