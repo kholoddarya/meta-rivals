@@ -1,5 +1,4 @@
 import { runQuickPickGeneration } from '../utils/generator/main'
-
 import type { GeneratorInput, GeneratorOptions, GeneratorResult } from '~/types/generator'
 import type { RoleType } from '~/types/sheets'
 
@@ -17,34 +16,23 @@ export default defineEventHandler(async (event) => {
   try {
     body = await readBody<GenerateRequestBody>(event)
   } catch (error: unknown) {
-    throw createError({
-      statusCode: 400,
-      message: 'Некорректный формат запроса',
-    })
+    throw createError({ statusCode: 400, message: 'Некорректный формат запроса' })
   }
 
-  // Валидация обязательных полей
   if (!body || !Array.isArray(body.roles) || body.roles.length === 0) {
-    throw createError({
-      statusCode: 400,
-      message: 'Необходимо выбрать хотя бы одну роль',
-    })
+    throw createError({ statusCode: 400, message: 'Необходимо выбрать хотя бы одну роль' })
   }
 
   if (!body.options || typeof body.options !== 'object') {
     throw createError({ statusCode: 400, message: 'Некорректные опции' })
   }
 
-  // Загружаем данные из Google Sheets
   const config = useRuntimeConfig()
   const spreadsheetId = config.spreadsheetId || '1wAGk5Na43fQPArlfj0T8c-HTjj3bs1PLyTKx0NdN-QY'
   const apiKey = config.googleApiKey
 
   if (!apiKey) {
-    throw createError({
-      statusCode: 500,
-      message: 'Google API Key не найден в .env',
-    })
+    throw createError({ statusCode: 500, message: 'Google API Key не найден в .env' })
   }
 
   const sheets = ['FullInfo', 'Class', 'HeroTier', 'Roles'] as const
@@ -59,7 +47,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 502, message })
   }
 
-  // Парсим данные
   const parseSheet = (index: number): Array<Record<string, string | null>> => {
     const vr = sheetsData.valueRanges[index]
     if (!vr || !vr.values || vr.values.length === 0) return []
@@ -68,8 +55,13 @@ export default defineEventHandler(async (event) => {
     if (!header) return []
 
     return rows.map((row) => {
-      const entries = header.map((key, idx) => [key, row[idx] ?? null] as [string, string | null])
-      return Object.fromEntries(entries) as Record<string, string | null>
+      const obj: Record<string, string | null> = {}
+      header.forEach((h, idx) => {
+        const key = (h ?? '').toString().trim() // Убираем пробелы из ключей!
+        const val = row[idx]
+        obj[key] = val !== undefined && val !== null ? val.toString().trim() : null
+      })
+      return obj
     })
   }
 
@@ -78,54 +70,80 @@ export default defineEventHandler(async (event) => {
   const heroTierRaw = parseSheet(2)
   const rolesRaw = parseSheet(3)
 
-  // Строим rowHeaders из FullInfo (первая колонка "Hero | Anchor")
+  // Строим rowHeaders (и сразу создаем нормализованную версию для надежного поиска)
   const rowHeaders = fullInfoRaw
-    .map((row) => row['Hero | Anchor'] ?? '')
-    .filter((name) => name.trim() !== '')
+    .map((row) => {
+      // Пробуем разные варианты названия первой колонки
+      const name =
+        row['Hero | Anchor'] ||
+        row['Hero'] ||
+        row['Имя'] ||
+        row['Персонаж'] ||
+        Object.values(row)[0]
+      return (name ?? '').toString().trim()
+    })
+    .filter((name) => name !== '')
+
+  const rowHeadersNormalized = rowHeaders.map((h) => h.toLowerCase())
 
   if (rowHeaders.length === 0) {
-    throw createError({
-      statusCode: 500,
-      message: 'Лист FullInfo пуст или не найден',
-    })
+    throw createError({ statusCode: 500, message: 'Лист FullInfo пуст или не найден' })
   }
 
-  // Строим rolesMap
   const rolesMap = new Map<string, RoleType>()
   for (const row of rolesRaw) {
-    const hero = row['Hero'] ?? ''
-    const role = row['Role'] ?? ''
-    if (hero.trim() && ['sup', 'dps', 'tnk'].includes(role.trim().toLowerCase())) {
-      rolesMap.set(hero.trim(), role.trim().toLowerCase() as RoleType)
+    // Пытаемся найти по ключу, если не вышло - берем 1-ю и 2-ю колонку по индексу
+    const hero = ((row['Hero'] || row['Имя'] || row['Name'] || Object.values(row)[0]) ??
+      '') as string
+    const role = ((row['Role'] || row['Роль'] || Object.values(row)[1]) ?? '') as string
+
+    const roleLower = role.toLowerCase()
+    if (hero && ['sup', 'dps', 'tnk'].includes(roleLower)) {
+      rolesMap.set(hero, roleLower as RoleType)
     }
   }
 
-  // Строим classesMap
   const classesMap = new Map<string, { class: string; counter: string }>()
   for (const row of classRaw) {
-    const hero = row['Hero'] ?? ''
-    if (hero.trim()) {
-      classesMap.set(hero.trim(), {
-        class: row['Poke'] ?? '',
-        counter: row['Anti-Dive'] ?? '',
+    const hero = ((row['Hero'] || row['Имя'] || row['Name'] || Object.values(row)[0]) ??
+      '') as string
+    if (hero) {
+      classesMap.set(hero, {
+        class: ((row['Poke'] || row['Class'] || Object.values(row)[1]) ?? '') as string,
+        counter: ((row['Anti-Dive'] || row['Counter'] || Object.values(row)[2]) ?? '') as string,
       })
     }
   }
 
-  // Строим heroTiersList
   const heroTiersList: Array<{ hero: string; tier: string }> = []
   for (const row of heroTierRaw) {
-    const hero = row['Hero'] ?? ''
-    const tier = row['Tier'] ?? ''
-    if (hero.trim() && tier.trim()) {
-      heroTiersList.push({
-        hero: hero.trim(),
-        tier: tier.trim().toUpperCase(),
-      })
+    const hero = ((row['Hero'] || row['Имя'] || row['Name'] || Object.values(row)[0]) ??
+      '') as string
+    const tier = ((row['Tier'] || row['Тир'] || Object.values(row)[1]) ?? '') as string
+    if (hero && tier) {
+      heroTiersList.push({ hero, tier: tier.toUpperCase() })
     }
   }
 
-  // Формируем входные данные для генератора
+  const bannedSet = new Set((body.banned || []).map((h) => h.toLowerCase().trim()))
+
+  const myHeroIndices = (body.myHeroes || [])
+    .filter((h) => !bannedSet.has(h.toLowerCase().trim()))
+    .map((h) => rowHeadersNormalized.indexOf(h.toLowerCase().trim()))
+    .filter((idx) => idx !== -1)
+
+  const enemyIndices = (body.enemies || [])
+    .map((h) => rowHeadersNormalized.indexOf(h.toLowerCase().trim()))
+    .filter((idx) => idx !== -1)
+
+  const starredIndices = (body.starred || [])
+    .map((h) => rowHeadersNormalized.indexOf(h.toLowerCase().trim()))
+    .filter((idx) => idx !== -1 && enemyIndices.includes(idx))
+
+  const bannedIndices = new Set(
+    rowHeadersNormalized.map((name, i) => (bannedSet.has(name) ? i : -1)).filter((i) => i !== -1)
+  )
+
   const input: GeneratorInput = {
     enemies: body.enemies || [],
     myHeroes: body.myHeroes || [],
@@ -135,14 +153,16 @@ export default defineEventHandler(async (event) => {
     starred: body.starred || [],
   }
 
-  // Запускаем генерацию
   const result: GeneratorResult = runQuickPickGeneration(
     input,
     rowHeaders,
     fullInfoRaw,
     rolesMap,
     classesMap,
-    heroTiersList
+    heroTiersList,
+    myHeroIndices,
+    starredIndices,
+    bannedIndices
   )
 
   return result

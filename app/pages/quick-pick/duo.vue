@@ -17,7 +17,7 @@
         class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
       >
         <h3 class="font-semibold text-blue-900 dark:text-blue-300 mb-2">
-          💡 Рекомендации для Duo:
+          💡 Рекомендации для Duo:app/pages/quick-pick/duo.vue
         </h3>
         <ul class="text-sm text-blue-800 dark:text-blue-400 space-y-1 list-disc list-inside">
           <li>Оптимальная раскладка: 1 Support + 1 DPS/Tank</li>

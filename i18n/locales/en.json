@@ -7,9 +7,25 @@
   "parameters": "Parameters",
   "generate": "Generate",
   "clear": "Clear",
+  "selectRoleHint": "Select at least one role to generate a team",
   "result": "Result",
   "otherTools": "Other Tools",
   "totalRoles": "Total: {count} / 6",
+
+  "dataLoadError": "Data load error",
+  "retry": "Retry",
+  "loadingData": "Loading data from sheets...",
+  "noHeroesData": "Hero list is empty. Please check Google Sheets connection.",
+  "noHeroesFound": "No heroes found",
+  "generating": "Generating...",
+  "noTeamsFoundTitle": "No teams found",
+  "noTeamsFoundDesc": "No valid combinations found for the selected heroes and roles. Try changing the composition or removing some constraints.",
+  "noDetailsAvailable": "Evaluation details are not available",
+
+  "toast": {
+    "maxRolesTitle": "Team limit reached",
+    "maxRolesDesc": "A team can have a maximum of 6 heroes. Remove a role or generate the team first."
+  },
   
   "roles": {
     "sup": "Support",
