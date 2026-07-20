@@ -255,7 +255,32 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
       <UCard class="lg:col-span-2">
         <template #header>
           <div class="flex items-center justify-between gap-4">
-            <span class="font-semibold">Heroes</span>
+            <div class="flex items-center gap-3">
+              <span class="font-semibold">Heroes</span>
+
+              <!-- 📖 Legend -->
+              <div
+                class="hidden sm:flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
+              >
+                <div class="flex items-center gap-1" title="Enemy">
+                  <UIcon name="i-lucide-swords" class="size-4 text-error-500" />
+                  <span>Enemy</span>
+                </div>
+                <div class="flex items-center gap-1" title="My Hero">
+                  <UIcon name="i-lucide-shield-check" class="size-4 text-success-500" />
+                  <span>Ally</span>
+                </div>
+                <div class="flex items-center gap-1" title="Key Enemy">
+                  <UIcon name="i-lucide-star" class="size-4 text-warning-500" />
+                  <span>Key enemy</span>
+                </div>
+                <div class="flex items-center gap-1" title="Ban">
+                  <UIcon name="i-lucide-ban" class="size-4 text-gray-500" />
+                  <span>Banned</span>
+                </div>
+              </div>
+            </div>
+
             <UInput
               v-model="search"
               icon="i-lucide-search"
@@ -302,45 +327,52 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
             </div>
 
             <div class="flex items-center gap-1 mt-1">
-              <UButton
-                icon="i-lucide-swords"
-                size="xs"
-                :color="quickPick.selectedEnemies.includes(hero.name) ? 'error' : 'neutral'"
-                :variant="quickPick.selectedEnemies.includes(hero.name) ? 'solid' : 'ghost'"
-                :title="'Enemy'"
-                :aria-label="'Enemy'"
-                :disabled="!canAddEnemy && !quickPick.selectedEnemies.includes(hero.name)"
-                @click="quickPick.toggleEnemy(hero.name)"
-              />
-              <UButton
-                icon="i-lucide-shield-check"
-                size="xs"
-                :color="quickPick.selectedMyHeroes.includes(hero.name) ? 'success' : 'neutral'"
-                :variant="quickPick.selectedMyHeroes.includes(hero.name) ? 'solid' : 'ghost'"
-                :title="'My Hero'"
-                :aria-label="'My Hero'"
-                :disabled="!canAddAlly && !quickPick.selectedMyHeroes.includes(hero.name)"
-                @click="quickPick.toggleMyHero(hero.name)"
-              />
-              <UButton
-                icon="i-lucide-star"
-                size="xs"
-                :color="quickPick.starredEnemies.includes(hero.name) ? 'warning' : 'neutral'"
-                :variant="quickPick.starredEnemies.includes(hero.name) ? 'solid' : 'ghost'"
-                :title="'Key Enemy'"
-                :aria-label="'Key Enemy'"
-                :disabled="!canAddStar && !quickPick.starredEnemies.includes(hero.name)"
-                @click="quickPick.toggleStar(hero.name)"
-              />
-              <UButton
-                icon="i-lucide-ban"
-                size="xs"
-                :color="quickPick.bannedHeroes.includes(hero.name) ? 'neutral' : 'neutral'"
-                :variant="quickPick.bannedHeroes.includes(hero.name) ? 'solid' : 'ghost'"
-                :title="'Ban'"
-                :aria-label="'Ban'"
-                @click="quickPick.toggleBan(hero.name)"
-              />
+              <!-- Enemy -->
+              <UTooltip text="Mark as enemy" :popper="{ placement: 'top' }">
+                <UButton
+                  icon="i-lucide-swords"
+                  size="xs"
+                  :color="quickPick.selectedEnemies.includes(hero.name) ? 'error' : 'neutral'"
+                  :variant="quickPick.selectedEnemies.includes(hero.name) ? 'solid' : 'ghost'"
+                  :disabled="!canAddEnemy && !quickPick.selectedEnemies.includes(hero.name)"
+                  @click="quickPick.toggleEnemy(hero.name)"
+                />
+              </UTooltip>
+
+              <!-- My Hero -->
+              <UTooltip text="Add to my team" :popper="{ placement: 'top' }">
+                <UButton
+                  icon="i-lucide-shield-check"
+                  size="xs"
+                  :color="quickPick.selectedMyHeroes.includes(hero.name) ? 'success' : 'neutral'"
+                  :variant="quickPick.selectedMyHeroes.includes(hero.name) ? 'solid' : 'ghost'"
+                  :disabled="!canAddAlly && !quickPick.selectedMyHeroes.includes(hero.name)"
+                  @click="quickPick.toggleMyHero(hero.name)"
+                />
+              </UTooltip>
+
+              <!-- Key Enemy -->
+              <UTooltip text="Mark as key enemy" :popper="{ placement: 'top' }">
+                <UButton
+                  icon="i-lucide-star"
+                  size="xs"
+                  :color="quickPick.starredEnemies.includes(hero.name) ? 'warning' : 'neutral'"
+                  :variant="quickPick.starredEnemies.includes(hero.name) ? 'solid' : 'ghost'"
+                  :disabled="!canAddStar && !quickPick.starredEnemies.includes(hero.name)"
+                  @click="quickPick.toggleStar(hero.name)"
+                />
+              </UTooltip>
+
+              <!-- Ban -->
+              <UTooltip text="Ban hero" :popper="{ placement: 'top' }">
+                <UButton
+                  icon="i-lucide-ban"
+                  size="xs"
+                  color="neutral"
+                  :variant="quickPick.bannedHeroes.includes(hero.name) ? 'solid' : 'ghost'"
+                  @click="quickPick.toggleBan(hero.name)"
+                />
+              </UTooltip>
             </div>
           </div>
 
