@@ -36,17 +36,15 @@ function heroStatus(name: string) {
 
 const limits = {
   enemies: 6,
-  myHeroes: 5, // Оставляем 5, чтобы всегда можно было добавить хотя бы 1 роль
+  myHeroes: 5,
   stars: 2,
-  totalTeam: 6, // 🆕 Абсолютный лимит команды
+  totalTeam: 6,
   maxPerRole: 3,
   maxFlx: 3,
 }
 
-// 🆕 Считаем количество уже выбранных героев слева
 const myHeroesCount = computed(() => quickPick.selectedMyHeroes.length)
 
-// 🆕 Считаем количество выбранных ролей справа
 const draftedRolesCount = computed(() => {
   return (
     quickPick.roleCounts.sup +
@@ -56,11 +54,9 @@ const draftedRolesCount = computed(() => {
   )
 })
 
-// 🆕 Общий размер команды
 const totalTeamSize = computed(() => myHeroesCount.value + draftedRolesCount.value)
 
 const canAddRole = (role: 'sup' | 'dps' | 'tnk' | 'flx') => {
-  // 🆕 Проверяем общий лимит команды, а не только роли
   if (totalTeamSize.value >= limits.totalTeam) return false
   const max = role === 'flx' ? limits.maxFlx : limits.maxPerRole
   return quickPick.roleCounts[role] < max
@@ -108,6 +104,12 @@ const otherPages = [
     description:
       'Theoretically the strongest team compositions based on team-ups and current hero meta strength.',
   },
+  {
+    to: '/data-base',
+    icon: 'i-lucide-database',
+    title: 'Database',
+    description: 'Browse all heroes, their roles, classes, tiers, and detailed statistics.',
+  },
 ]
 
 const recommendedHeroes = computed(() => {
@@ -147,7 +149,6 @@ const isEmptyResult = computed(() => {
   )
 })
 
-// 🆕 Обновленная функция с проверкой общего размера команды
 const handleRoleChange = (role: 'sup' | 'dps' | 'tnk' | 'flx', delta: number) => {
   if (delta > 0 && totalTeamSize.value >= limits.totalTeam) {
     toast.add({
@@ -167,7 +168,6 @@ const handleRoleChange = (role: 'sup' | 'dps' | 'tnk' | 'flx', delta: number) =>
   quickPick.changeRole(role, delta)
 }
 
-// 🆕 Флаг для отслеживания необходимости уменьшить роль
 const pendingRoleReduction = ref<{ role: 'sup' | 'dps' | 'tnk' | 'flx' | null; timestamp: number }>(
   {
     role: null,
@@ -175,31 +175,25 @@ const pendingRoleReduction = ref<{ role: 'sup' | 'dps' | 'tnk' | 'flx' | null; t
   }
 )
 
-// 🆕 Watcher, который срабатывает при изменении флага и уменьшает роль
 watch(
   pendingRoleReduction,
   (newVal) => {
-    console.log(newVal)
     if (newVal.role && newVal.timestamp > 0) {
       const role = newVal.role
       if (quickPick.roleCounts[role] > 0) {
         quickPick.changeRole(role, -1)
       }
-      // Сбрасываем флаг
       pendingRoleReduction.value = { role: null, timestamp: 0 }
     }
   },
   { immediate: false }
 )
 
-// 🆕 Обработчик добавления рекомендованного героя
-const handleAddRecommendedHero = (heroName: string, heroRole: string | null, hero: any) => {
-  // 1. Добавляем героя в "Мои", если его там еще нет
+const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => {
   if (!quickPick.selectedMyHeroes.includes(heroName)) {
     quickPick.selectedMyHeroes.push(heroName)
   }
 
-  // 2. Устанавливаем флаг для уменьшения роли (watcher сработает автоматически)
   const role = heroRole as 'sup' | 'dps' | 'tnk' | 'flx'
   if (role && (role === 'sup' || role === 'dps' || role === 'tnk' || role === 'flx')) {
     pendingRoleReduction.value = { role, timestamp: Date.now() }
@@ -209,6 +203,18 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null, her
 
 <template>
   <div class="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <!-- 🔙 Кнопка возврата на главную -->
+    <NuxtLink
+      to="/"
+      class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group w-fit"
+    >
+      <UIcon
+        name="i-lucide-arrow-left"
+        class="size-4 transition-transform group-hover:-translate-x-1"
+      />
+      Back to Home
+    </NuxtLink>
+
     <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between gap-4">
       <div class="space-y-2">
@@ -296,7 +302,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null, her
             </div>
 
             <div class="flex items-center gap-1 mt-1">
-              <!-- 🛡️ Кнопки с disabled состоянием и aria-label для доступности -->
               <UButton
                 icon="i-lucide-swords"
                 size="xs"
@@ -339,7 +344,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null, her
             </div>
           </div>
 
-          <!-- Подсказка, если поиск ничего не дал -->
           <div
             v-if="filteredHeroes.length === 0"
             class="col-span-full text-center py-10 text-gray-400 text-sm"
@@ -411,7 +415,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null, her
                   </span>
                 </div>
 
-                <!-- Визуальный индикатор -->
                 <UIcon
                   v-if="totalTeamSize >= 6"
                   name="i-lucide-circle-alert"
@@ -466,7 +469,7 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null, her
             <UButton
               block
               :loading="quickPick.isLoading"
-              :disabled="quickPick.totalRoles === 0 || sheetsStore.isLoading || quickPick.isLoading"
+              :disabled="totalTeamSize === 0 || sheetsStore.isLoading || quickPick.isLoading"
               icon="i-lucide-wand-2"
               @click="quickPick.generateTeams"
             >
@@ -484,12 +487,11 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null, her
             </UButton>
           </div>
 
-          <!-- 🛡️ Подсказки о блокировке -->
           <p
-            v-if="quickPick.totalRoles === 0"
+            v-if="totalTeamSize === 0"
             class="text-xs text-center text-amber-600 dark:text-amber-400 font-medium"
           >
-            Select at least one role to generate a team
+            Select at least one hero or role to generate a team
           </p>
 
           <UAlert v-if="quickPick.error" color="error" variant="soft" :title="quickPick.error" />
@@ -497,7 +499,7 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null, her
       </div>
     </div>
 
-    <!-- 🛡️ Generation Result: Обработка пустого успешного ответа -->
+    <!-- 🛡️ Generation Result -->
     <div v-if="quickPick.lastResult">
       <UCard v-if="isEmptyResult" color="warning" variant="soft">
         <template #header>
@@ -531,7 +533,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null, her
         </template>
 
         <div class="space-y-6">
-          <!-- 🌟 Рекомендуемые герои -->
           <div v-if="recommendedHeroes.length > 0">
             <h3
               class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2"
@@ -588,7 +589,7 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null, her
                   variant="soft"
                   :icon="quickPick.selectedMyHeroes.includes(hero.name) ? '' : 'i-lucide-plus'"
                   :disabled="quickPick.selectedMyHeroes.includes(hero.name) || quickPick.isLoading"
-                  @click="handleAddRecommendedHero(hero.name, hero.role, hero)"
+                  @click="handleAddRecommendedHero(hero.name, hero.role)"
                 >
                   {{
                     quickPick.selectedMyHeroes.includes(hero.name)
@@ -600,7 +601,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null, her
             </div>
           </div>
 
-          <!-- 🔄 Альтернативы -->
           <div v-if="hasAlternatives" class="pt-4 border-t border-gray-200 dark:border-gray-700">
             <h3
               class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2"
@@ -624,7 +624,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null, her
             </div>
           </div>
 
-          <!-- 📊 Детали оценки (Безопасный details) -->
           <details
             class="group border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
           >
@@ -643,7 +642,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null, her
             <div
               class="p-4 text-xs space-y-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900"
             >
-              <!-- 🛡️ Fallback, если formattedDetails отсутствует -->
               <div
                 v-html="
                   quickPick.lastResult?.groups?.[0]?.bestTeam?.formattedDetails ||
