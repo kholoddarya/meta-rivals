@@ -22,15 +22,15 @@ function formatColumnName(key: string) {
 // 🎯 Компактная легенда для минимального занимаемого места
 const tierLegend = [
   {
-    key: 'SA',
+    key: 'S',
     label: 'Meta',
     bg: 'bg-purple-100 dark:bg-purple-900/30',
     text: 'text-purple-700 dark:text-purple-300',
     border: 'border-purple-200 dark:border-purple-800',
   },
   {
-    key: 'S',
-    label: 'Top',
+    key: 'SA',
+    label: 'Top with anchor',
     bg: 'bg-blue-100 dark:bg-blue-900/30',
     text: 'text-blue-700 dark:text-blue-300',
     border: 'border-blue-200 dark:border-blue-800',

@@ -9,6 +9,7 @@ import type {
 import { CLASS_COUNTERS, ROLE_WEIGHTS, TIER_SCORES, GRADE_SCORES } from './constants'
 import { getCombinations, insertToTop, generateFlxDistributions } from './utils'
 import { evaluateTeam } from './evaluator'
+import { buildCompositionsToGenerate, DEFAULT_SETTINGS } from '../generatorSettings'
 
 // Построение графа синергий
 function buildSynergyGraph(
@@ -58,7 +59,6 @@ function groupCharactersByRole(
     if (bannedIndices.has(i)) continue
 
     const role = rolesMap.get(rowHeaders[i])
-    // role уже имеет тип RoleType | undefined. Если он truthy, TS знает, что это 'sup' | 'dps' | 'tnk'
     if (role) {
       groups[role].push(i)
     }
@@ -107,7 +107,6 @@ function calculateQuickUpperBound(team: number[], context: GeneratorContext) {
   for (const charIdx of team) {
     const charName = context.rowHeaders[charIdx]
 
-    // 🆕 Убрали небезопасное '!' и сделали честную проверку
     if (context.options.useTiers) {
       const tierInfo = context.heroTiersMap.get(charName)
       if (tierInfo) {
@@ -122,7 +121,6 @@ function calculateQuickUpperBound(team: number[], context: GeneratorContext) {
     }
 
     const role = context.rolesMap.get(charName)
-    // 🆕 Безопасное увеличение счётчика
     if (role) {
       roleCounts[role]++
     }
@@ -292,7 +290,7 @@ export function runQuickPickGeneration(
   try {
     const opts = {
       ...input.options,
-      maxResults: Math.max(1, input.options.maxResults ?? 10),
+      maxResults: 10,
     }
     const bannedSet = new Set(input.banned || [])
 
@@ -349,7 +347,7 @@ export function runQuickPickGeneration(
     const fixedRoles: Record<RoleType, number> = { sup: 0, dps: 0, tnk: 0 }
     let flxCount = 0
 
-    // 🆕 Упрощенная и строгая проверка, так как input.roles уже типизирован как RoleType[]
+    // Считаем роли, явно запрошенные в "Roles to Draft"
     for (const role of input.roles) {
       if (role === 'flx') {
         flxCount++
@@ -358,13 +356,80 @@ export function runQuickPickGeneration(
       }
     }
 
-    const totalTeamSize =
-      fixedRoles.sup + fixedRoles.dps + fixedRoles.tnk + flxCount + myHeroIndices.length
-    const compositionWeightsMap: Record<string, number> = {}
-    const comps = ['2-2-2', '1-3-2', '2-3-1']
-    comps.forEach((c, i) => {
-      compositionWeightsMap[c] = comps.length - i
-    })
+    // ДОБАВЛЯЕМ роли героев, которые пользователь уже выбрал в "Heroes"
+    // for (const heroName of input.myHeroes) {
+    //   const role = rolesMap.get(heroName)
+    //   if (role && (role === 'sup' || role === 'dps' || role === 'tnk')) {
+    //     fixedRoles[role]++
+    //   }
+    // }
+
+    // Если пользователь выбрал больше героев, чем TEAM_SIZE, ограничиваем
+    const totalFixed = fixedRoles.sup + fixedRoles.dps + fixedRoles.tnk + flxCount
+    if (totalFixed > 6) {
+      // В идеале это должно блокироваться на фронте, но на всякий случай
+      return { success: false, error: 'Total selected heroes and roles exceed team size of 6.' }
+    }
+
+    // Получаем все валидные раскладки с их весами приоритета
+    const prioritizedCompositions = buildCompositionsToGenerate(
+      DEFAULT_SETTINGS.ROLE_COMPOSITIONS,
+      DEFAULT_SETTINGS.TEAM_SIZE
+    )
+
+    let distributionsToProcess: any[] = []
+
+    if (flxCount === 0) {
+      // 🎯 ЕСЛИ FLEX НЕТ: мы просто используем запрошенные роли как есть.
+      // Финальная композиция будет корректно посчитана в evaluator.ts на основе всех 6 героев.
+      distributionsToProcess = [
+        {
+          sup: fixedRoles.sup,
+          dps: fixedRoles.dps,
+          tnk: fixedRoles.tnk,
+          weight: 1, // Базовый вес, итоговая оценка будет зависеть от реальной finalComposition
+          finalComp: 'pending', // Будет перезаписано корректным значением внутри evaluateTeam
+        },
+      ]
+    } else {
+      // 🎯 ЕСЛИ FLEX ЕСТЬ: распределяем их, чтобы достичь приоритетных композиций
+      const validDistributions = prioritizedCompositions
+        .filter(
+          (comp) =>
+            comp.sup >= fixedRoles.sup &&
+            comp.dps >= fixedRoles.dps &&
+            comp.tnk >= fixedRoles.tnk &&
+            comp.sup -
+              fixedRoles.sup +
+              (comp.dps - fixedRoles.dps) +
+              (comp.tnk - fixedRoles.tnk) ===
+              flxCount
+        )
+        .map((comp) => ({
+          sup: comp.sup - fixedRoles.sup,
+          dps: comp.dps - fixedRoles.dps,
+          tnk: comp.tnk - fixedRoles.tnk,
+          weight: comp.weight,
+          finalComp: `${comp.sup}-${comp.dps}-${comp.tnk}`,
+        }))
+
+      if (validDistributions.length > 0) {
+        distributionsToProcess = validDistributions
+      } else {
+        // Фоллбэк: если запрошенные роли + флексы не дают ни одной валидной композиции,
+        // просто перебираем все варианты распределения флексов с весом 0
+        distributionsToProcess = generateFlxDistributions(flxCount).map((d) => ({
+          sup: d.sup,
+          dps: d.dps,
+          tnk: d.tnk,
+          weight: 0,
+          finalComp: `${fixedRoles.sup + d.sup}-${fixedRoles.dps + d.dps}-${fixedRoles.tnk + d.tnk}`,
+        }))
+      }
+    }
+
+    // Сортируем по весу (приоритету), чтобы генератор в первую очередь проверял лучшие композиции
+    distributionsToProcess.sort((a, b) => b.weight - a.weight)
 
     const context: GeneratorContext = {
       rowHeaders,
@@ -390,15 +455,9 @@ export function runQuickPickGeneration(
     const topTeams: TeamResult[] = []
     let totalIterations = 0
     let skippedByBound = 0
-    const flxDistributions = generateFlxDistributions(flxCount)
 
-    flxDistributions.sort((a, b) => {
-      const compA = `${fixedRoles.sup + a.sup}-${fixedRoles.dps + a.dps}-${fixedRoles.tnk + a.tnk}`
-      const compB = `${fixedRoles.sup + b.sup}-${fixedRoles.dps + b.dps}-${fixedRoles.tnk + b.tnk}`
-      return (compositionWeightsMap[compB] || 0) - (compositionWeightsMap[compA] || 0)
-    })
-
-    for (const dist of flxDistributions) {
+    // Итерируемся по отсортированным дистрибуциям
+    for (const dist of distributionsToProcess) {
       const totalRoles = {
         sup: fixedRoles.sup + dist.sup,
         dps: fixedRoles.dps + dist.dps,
@@ -413,11 +472,12 @@ export function runQuickPickGeneration(
         continue
       }
 
-      const supComb = getCombinations(charactersByRole.sup, totalRoles.sup)
-      const dpsComb = getCombinations(charactersByRole.dps, totalRoles.dps)
-      const tnkComb = getCombinations(charactersByRole.tnk, totalRoles.tnk)
-      const compStr = `${totalRoles.sup}-${totalRoles.dps}-${totalRoles.tnk}`
-      const compWeight = compositionWeightsMap[compStr] || 1
+      const supComb = getCombinations(charactersByRole.sup, dist.sup)
+      const dpsComb = getCombinations(charactersByRole.dps, dist.dps)
+      const tnkComb = getCombinations(charactersByRole.tnk, dist.tnk)
+
+      const compStr = dist.finalComp
+      const compWeight = dist.weight
 
       for (const supTeam of supComb) {
         for (const dpsTeam of dpsComb) {
@@ -446,7 +506,6 @@ export function runQuickPickGeneration(
             totalIterations++
           }
         }
-        // Защита от зависания (4 минуты)
         if (Date.now() - startTime > 240000) break
       }
       if (Date.now() - startTime > 240000) break
@@ -475,7 +534,7 @@ export function runQuickPickGeneration(
         duration: ((Date.now() - startTime) / 1000).toFixed(2),
         iterations: totalIterations,
         skippedByBound,
-        distributions: flxDistributions.length,
+        distributions: distributionsToProcess.length,
         totalGenerated: topTeams.length,
         groupsCount: groups.length,
         requestedResults: opts.maxResults,

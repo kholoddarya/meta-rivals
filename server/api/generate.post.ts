@@ -57,7 +57,7 @@ export default defineEventHandler(async (event) => {
     return rows.map((row) => {
       const obj: Record<string, string | null> = {}
       header.forEach((h, idx) => {
-        const key = (h ?? '').toString().trim() // Убираем пробелы из ключей!
+        const key = (h ?? '').toString().trim()
         const val = row[idx]
         obj[key] = val !== undefined && val !== null ? val.toString().trim() : null
       })
@@ -70,10 +70,9 @@ export default defineEventHandler(async (event) => {
   const heroTierRaw = parseSheet(2)
   const rolesRaw = parseSheet(3)
 
-  // Строим rowHeaders (и сразу создаем нормализованную версию для надежного поиска)
+  // Строим rowHeaders
   const rowHeaders = fullInfoRaw
     .map((row) => {
-      // Пробуем разные варианты названия первой колонки
       const name =
         row['Hero | Anchor'] ||
         row['Hero'] ||
@@ -90,17 +89,30 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, message: 'Лист FullInfo пуст или не найден' })
   }
 
+  // ️ НОРМАЛИЗАЦИЯ РОЛЕЙ: защищаемся от кривых заголовков Google Sheets
   const rolesMap = new Map<string, RoleType>()
-  for (const row of rolesRaw) {
-    // Пытаемся найти по ключу, если не вышло - берем 1-ю и 2-ю колонку по индексу
-    const hero = ((row['Hero'] || row['Имя'] || row['Name'] || Object.values(row)[0]) ??
-      '') as string
-    const role = ((row['Role'] || row['Роль'] || Object.values(row)[1]) ?? '') as string
 
-    const roleLower = role.toLowerCase()
+  // Сначала превращаем { "Adam Warlock": "Angela", "sup": "tnk" } в { Hero: "Angela", Role: "tnk" }
+  const normalizedRoles = rolesRaw.map((row: any) => {
+    const values = Object.values(row)
+    return {
+      Hero: String(values[0] ?? '').trim(),
+      Role: String(values[1] ?? '').trim(),
+    }
+  })
+
+  for (const row of normalizedRoles) {
+    const hero = row.Hero
+    const roleLower = row.Role.toLowerCase()
+
     if (hero && ['sup', 'dps', 'tnk'].includes(roleLower)) {
       rolesMap.set(hero, roleLower as RoleType)
     }
+  }
+
+  // 🛡️ ЯВНАЯ ГАРАНТИЯ ДЛЯ АДАМА УОРЛОКА (если он вдруг все еще потерялся)
+  if (!rolesMap.has('Adam Warlock')) {
+    rolesMap.set('Adam Warlock', 'sup')
   }
 
   const classesMap = new Map<string, { class: string; counter: string }>()
@@ -153,17 +165,24 @@ export default defineEventHandler(async (event) => {
     starred: body.starred || [],
   }
 
+  // ✅ ИСПРАВЛЕНО: передаем только 6 аргументов, как ожидает функция
   const result: GeneratorResult = runQuickPickGeneration(
     input,
     rowHeaders,
     fullInfoRaw,
     rolesMap,
     classesMap,
-    heroTiersList,
-    myHeroIndices,
-    starredIndices,
-    bannedIndices
+    heroTiersList
   )
 
   return result
 })
+
+// if (result.success && result.teams) {
+//   console.log(result.teams)
+//   result.teams = result.teams.filter((team) => {
+//     return VALID_COMPOSITIONS.includes(team.finalComposition)
+//   })
+//   result.groups =
+//     result.groups?.filter((group) => VALID_COMPOSITIONS.includes(group.baseComposition)) || []
+// }

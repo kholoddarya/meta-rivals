@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useSheetsStore } from '~/stores/sheets'
+import { useQuickPickStore } from '~/stores/quickPick'
+
 const toast = useToast()
 const sheetsStore = useSheetsStore()
 const quickPick = useQuickPickStore()
@@ -44,7 +47,6 @@ const limits = {
 }
 
 const myHeroesCount = computed(() => quickPick.selectedMyHeroes.length)
-
 const draftedRolesCount = computed(() => {
   return (
     quickPick.roleCounts.sup +
@@ -53,7 +55,6 @@ const draftedRolesCount = computed(() => {
     quickPick.roleCounts.flx
   )
 })
-
 const totalTeamSize = computed(() => myHeroesCount.value + draftedRolesCount.value)
 
 const canAddRole = (role: 'sup' | 'dps' | 'tnk' | 'flx') => {
@@ -72,81 +73,75 @@ const canAddStar = computed(() => quickPick.starredEnemies.length < limits.stars
 
 const otherPages = [
   {
+    to: '/data-base',
+    icon: 'i-lucide-database',
+    title: 'Database',
+    description: 'Browse all heroes, roles, classes, tiers, and stats.',
+  },
+  {
     to: '/quick-pick/duo',
     icon: 'i-lucide-users',
     title: 'Duo',
-    description: 'Team building for two heroes, focusing on bonds and synergies between the pair.',
+    description: 'Team building for two heroes, focusing on bonds and synergies.',
   },
   {
     to: '/quick-pick/trio',
     icon: 'i-lucide-users-round',
     title: 'Trio',
-    description:
-      'A combination of three heroes — balancing roles and team bonuses for a small group.',
+    description: 'Balanced 3-hero teams with optimal role distribution.',
   },
   {
     to: '/quick-pick/quadro',
     icon: 'i-lucide-user-plus',
     title: 'Quad',
-    description: 'A four-player party — expanded role selection and counter-picks against enemies.',
+    description: 'Expanded 4-player parties with advanced role selection.',
   },
   {
     to: '/quick-pick/team',
     icon: 'i-lucide-shield',
     title: 'Full Team',
-    description:
-      'Generates a 6-hero lineup based on player preferences, taking into account tiers, classes, and counter-picks.',
+    description: 'Complete 6-hero lineups based on player preferences.',
   },
   {
     to: '/quick-pick/teamups',
     icon: 'i-lucide-flame',
     title: 'Team-Ups',
-    description:
-      'Theoretically the strongest team compositions based on team-ups and current hero meta strength.',
-  },
-  {
-    to: '/data-base',
-    icon: 'i-lucide-database',
-    title: 'Database',
-    description: 'Browse all heroes, their roles, classes, tiers, and detailed statistics.',
+    description: 'Theoretically strongest team compositions based on meta.',
   },
 ]
 
-const recommendedHeroes = computed(() => {
-  if (!quickPick.lastResult?.success || !quickPick.lastResult?.groups?.length) return []
+// 🎯 Приоритетные композиции (должны совпадать с бэкендом)
+const VALID_COMPOSITIONS = ['2-2-2', '3-1-2', '3-2-1', '2-3-1', '2-1-3', '3-0-3', '4-1-1', '4-0-2']
 
-  const bestGroup = quickPick.lastResult.groups[0]
-  if (!bestGroup?.baseMembers) return []
+// 🆕 Умная фильтрация и сортировка топ-3 команд
+const topTeams = computed(() => {
+  if (!quickPick.lastResult?.success || !quickPick.lastResult?.teams?.length) return []
 
-  return bestGroup.baseMembers.map((name: string) => {
-    return (
-      sheetsStore.heroesList.find((h) => h.name === name) || {
-        name: name || 'Unknown Hero',
-        role: null,
-        class: 'Unknown',
-        counter: '',
-      }
-    )
-  })
-})
-
-const hasAlternatives = computed(() => {
-  return !!(
-    quickPick.lastResult?.groups?.[0]?.slotAlternatives?.length &&
-    quickPick.lastResult.groups[0].slotAlternatives[0]?.alternatives?.length
+  // 1. Фильтруем только валидные композиции
+  const validTeams = quickPick.lastResult.teams.filter((team: any) =>
+    VALID_COMPOSITIONS.includes(team.finalComposition)
   )
-})
 
-const alternatives = computed(() => {
-  if (!hasAlternatives.value) return []
-  return quickPick.lastResult!.groups[0].slotAlternatives[0].alternatives.slice(0, 6)
-})
+  // 2. Если валидных нет, берем все (с пометкой "субоптимально"), иначе берем валидные
+  const pool = validTeams.length > 0 ? validTeams : quickPick.lastResult.teams
+  const hasValidComposition = validTeams.length > 0
 
-const isEmptyResult = computed(() => {
-  return (
-    quickPick.lastResult?.success &&
-    (!quickPick.lastResult.teams?.length || !quickPick.lastResult.groups?.length)
-  )
+  // 3. Сортируем по totalScore и берем топ-3
+  return pool
+    .sort((a: any, b: any) => b.totalScore - a.totalScore)
+    .slice(0, 3)
+    .map((team: any, index: number) => ({
+      ...team,
+      rank:
+        index === 0
+          ? hasValidComposition
+            ? 'Top Pick'
+            : '⚠️ Best Available'
+          : index === 1
+            ? 'Alternative 1'
+            : 'Alternative 2',
+      isSuboptimal: !hasValidComposition,
+    }))
 })
 
 const handleRoleChange = (role: 'sup' | 'dps' | 'tnk' | 'flx', delta: number) => {
@@ -160,11 +155,7 @@ const handleRoleChange = (role: 'sup' | 'dps' | 'tnk' | 'flx', delta: number) =>
     })
     return
   }
-
-  if (delta < 0 && quickPick.roleCounts[role] <= 0) {
-    return
-  }
-
+  if (delta < 0 && quickPick.roleCounts[role] <= 0) return
   quickPick.changeRole(role, delta)
 }
 
@@ -203,7 +194,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
 
 <template>
   <div class="max-w-6xl mx-auto px-4 py-8 space-y-8">
-    <!-- 🔙 Кнопка возврата на главную -->
     <NuxtLink
       to="/"
       class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group w-fit"
@@ -215,7 +205,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
       Back to Home
     </NuxtLink>
 
-    <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between gap-4">
       <div class="space-y-2">
         <h1 class="text-3xl font-bold">Quick Team Builder</h1>
@@ -226,16 +215,14 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
       </div>
     </div>
 
-    <!-- 🛡️ Глобальная ошибка загрузки данных -->
     <UAlert v-if="sheetsStore.error" color="error" variant="soft" :title="sheetsStore.error">
       <template #actions>
-        <UButton color="error" variant="outline" size="xs" @click="sheetsStore.loadData()">
-          Retry
-        </UButton>
+        <UButton color="error" variant="outline" size="xs" @click="sheetsStore.loadData()"
+          >Retry</UButton
+        >
       </template>
     </UAlert>
 
-    <!-- 🛡️ Состояние загрузки данных -->
     <div
       v-if="sheetsStore.isLoading"
       class="flex flex-col items-center justify-center py-20 space-y-4"
@@ -244,12 +231,10 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
       <p class="text-gray-500 dark:text-gray-400">Loading data from sheets...</p>
     </div>
 
-    <!-- 🛡️ Состояние: данных нет -->
     <div v-else-if="!sheetsStore.heroesList.length" class="text-center py-20 text-gray-500">
       Hero list is empty. Please check Google Sheets connection.
     </div>
 
-    <!-- Основной контент (показываем только если данные загружены) -->
     <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Hero List -->
       <UCard class="lg:col-span-2">
@@ -257,30 +242,25 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
           <div class="flex items-center justify-between gap-4">
             <div class="flex items-center gap-3">
               <span class="font-semibold">Heroes</span>
-
-              <!-- 📖 Legend -->
               <div
                 class="hidden sm:flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
               >
-                <div class="flex items-center gap-1" title="Enemy">
-                  <UIcon name="i-lucide-swords" class="size-4 text-error-500" />
-                  <span>Enemy</span>
+                <div class="flex items-center gap-1">
+                  <UIcon name="i-lucide-swords" class="size-4 text-error-500" /><span>Enemy</span>
                 </div>
-                <div class="flex items-center gap-1" title="My Hero">
-                  <UIcon name="i-lucide-shield-check" class="size-4 text-success-500" />
-                  <span>Ally</span>
+                <div class="flex items-center gap-1">
+                  <UIcon name="i-lucide-shield-check" class="size-4 text-success-500" /><span
+                    >Ally</span
+                  >
                 </div>
-                <div class="flex items-center gap-1" title="Key Enemy">
-                  <UIcon name="i-lucide-star" class="size-4 text-warning-500" />
-                  <span>Key enemy</span>
+                <div class="flex items-center gap-1">
+                  <UIcon name="i-lucide-star" class="size-4 text-warning-500" /><span>Star</span>
                 </div>
-                <div class="flex items-center gap-1" title="Ban">
-                  <UIcon name="i-lucide-ban" class="size-4 text-gray-500" />
-                  <span>Banned</span>
+                <div class="flex items-center gap-1">
+                  <UIcon name="i-lucide-ban" class="size-4 text-gray-500" /><span>Ban</span>
                 </div>
               </div>
             </div>
-
             <UInput
               v-model="search"
               icon="i-lucide-search"
@@ -327,7 +307,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
             </div>
 
             <div class="flex items-center gap-1 mt-1">
-              <!-- Enemy -->
               <UTooltip text="Mark as enemy" :popper="{ placement: 'top' }">
                 <UButton
                   icon="i-lucide-swords"
@@ -338,8 +317,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
                   @click="quickPick.toggleEnemy(hero.name)"
                 />
               </UTooltip>
-
-              <!-- My Hero -->
               <UTooltip text="Add to my team" :popper="{ placement: 'top' }">
                 <UButton
                   icon="i-lucide-shield-check"
@@ -350,8 +327,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
                   @click="quickPick.toggleMyHero(hero.name)"
                 />
               </UTooltip>
-
-              <!-- Key Enemy -->
               <UTooltip text="Mark as key enemy" :popper="{ placement: 'top' }">
                 <UButton
                   icon="i-lucide-star"
@@ -362,8 +337,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
                   @click="quickPick.toggleStar(hero.name)"
                 />
               </UTooltip>
-
-              <!-- Ban -->
               <UTooltip text="Ban hero" :popper="{ placement: 'top' }">
                 <UButton
                   icon="i-lucide-ban"
@@ -375,7 +348,6 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
               </UTooltip>
             </div>
           </div>
-
           <div
             v-if="filteredHeroes.length === 0"
             class="col-span-full text-center py-10 text-gray-400 text-sm"
@@ -388,27 +360,22 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
       <!-- Generation Settings -->
       <div class="space-y-6">
         <UCard>
-          <template #header>
-            <span class="font-semibold">Roles to Draft</span>
-          </template>
-
+          <template #header><span class="font-semibold">Roles to Draft</span></template>
           <div class="space-y-3">
             <div
               v-for="role in ['sup', 'dps', 'tnk', 'flx'] as const"
               :key="role"
               class="flex items-center justify-between"
             >
-              <span class="text-sm">
-                {{
-                  role === 'sup'
-                    ? 'Support'
-                    : role === 'dps'
-                      ? 'Damage'
-                      : role === 'tnk'
-                        ? 'Tank'
-                        : 'Flex'
-                }}
-              </span>
+              <span class="text-sm">{{
+                role === 'sup'
+                  ? 'Support'
+                  : role === 'dps'
+                    ? 'Damage'
+                    : role === 'tnk'
+                      ? 'Tank'
+                      : 'Flex'
+              }}</span>
               <div class="flex items-center gap-2">
                 <UButton
                   icon="i-lucide-minus"
@@ -430,23 +397,24 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
               </div>
             </div>
           </div>
-
           <template #footer>
             <UTooltip
               text="Maximum team size (6) reached. Remove a hero or role to add more."
               :disabled="totalTeamSize < 6"
               :content="{ side: 'top' }"
             >
-              <div class="flex items-center justify-between">
+              <div class="flex items-center justify-between cursor-help">
                 <div class="flex flex-col">
-                  <span class="text-xs font-medium transition-colors text-gray-500">
+                  <span
+                    class="text-xs font-medium transition-colors"
+                    :class="totalTeamSize >= 6 ? 'text-red-500 font-bold' : 'text-gray-500'"
+                  >
                     Total: {{ totalTeamSize }} / 6
                   </span>
-                  <span class="text-[10px] text-gray-400">
-                    ({{ myHeroesCount }} heroes + {{ draftedRolesCount }} roles)
-                  </span>
+                  <span class="text-[10px] text-gray-400"
+                    >({{ myHeroesCount }} heroes + {{ draftedRolesCount }} roles)</span
+                  >
                 </div>
-
                 <UIcon
                   v-if="totalTeamSize >= 6"
                   name="i-lucide-circle-alert"
@@ -458,10 +426,7 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
         </UCard>
 
         <UCard>
-          <template #header>
-            <span class="font-semibold">Parameters</span>
-          </template>
-
+          <template #header><span class="font-semibold">Parameters</span></template>
           <div class="space-y-2">
             <UCheckbox
               v-model="quickPick.options.useSynergies"
@@ -514,176 +479,172 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
               :icon="quickPick.isLoading ? '' : 'i-lucide-rotate-ccw'"
               :disabled="quickPick.isLoading"
               @click="quickPick.clearAll"
+              >Clear</UButton
             >
-              Clear
-            </UButton>
           </div>
-
           <p
             v-if="totalTeamSize === 0"
             class="text-xs text-center text-amber-600 dark:text-amber-400 font-medium"
           >
             Select at least one hero or role to generate a team
           </p>
-
           <UAlert v-if="quickPick.error" color="error" variant="soft" :title="quickPick.error" />
         </div>
       </div>
     </div>
 
-    <!-- 🛡️ Generation Result -->
-    <div v-if="quickPick.lastResult">
-      <UCard v-if="isEmptyResult" color="warning" variant="soft">
-        <template #header>
-          <span
-            class="font-semibold flex items-center gap-2 text-warning-700 dark:text-warning-400"
-          >
-            <UIcon name="i-lucide-alert-triangle" class="size-5" />
-            No teams found
-          </span>
-        </template>
-        <p class="text-sm text-gray-600 dark:text-gray-300">
-          No valid combinations found for the selected heroes and roles. Try changing the
-          composition or removing some constraints.
-        </p>
-      </UCard>
+    <!-- 🆕 Generation Result: Top 3 Teams -->
+    <div v-if="quickPick.lastResult && topTeams.length > 0" class="space-y-6">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <UIcon name="i-lucide-sparkles" class="size-6 text-primary-500" />
+        Recommended Compositions
+      </h2>
 
-      <UCard v-else class="border-primary-200 dark:border-primary-800 ring-1 ring-primary-500/20">
-        <template #header>
-          <div class="flex items-center justify-between">
-            <span
-              class="font-semibold flex items-center gap-2 text-primary-700 dark:text-primary-400"
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <UCard
+          v-for="(team, index) in topTeams"
+          :key="index"
+          class="relative transition-all hover:shadow-lg"
+          :class="
+            team.isSuboptimal
+              ? 'border-amber-300 dark:border-amber-700'
+              : 'border-primary-200 dark:border-primary-800'
+          "
+        >
+          <!-- Rank Badge -->
+          <div class="absolute -top-2 left-4">
+            <UBadge
+              :color="team.isSuboptimal ? 'warning' : 'primary'"
+              variant="solid"
+              size="sm"
+              class="shadow-sm"
             >
-              <UIcon name="i-lucide-sparkles" class="size-5" />
-              Result
-            </span>
-            <UBadge color="primary" variant="subtle" size="sm">
-              ⏱️ {{ quickPick.lastResult.stats?.duration || '0.00' }}s • 🔍
-              {{ quickPick.lastResult.stats?.iterations || 0 }}
+              {{ team.rank }}
             </UBadge>
           </div>
-        </template>
 
-        <div class="space-y-6">
-          <div v-if="recommendedHeroes.length > 0">
-            <h3
-              class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2"
-            >
-              <UIcon name="i-lucide-thumbs-up" class="size-4 text-green-500" />
-              Recommended heroes for your team
-            </h3>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div
-                v-for="hero in recommendedHeroes"
-                :key="hero.name"
-                class="rounded-lg border border-primary-300 dark:border-primary-700 bg-primary-50/50 dark:bg-primary-900/20 p-3 flex flex-col gap-2 relative transition-all hover:shadow-md"
+          <!-- Composition & Warning -->
+          <div class="flex items-center justify-between mb-4 pt-2">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-gray-700 dark:text-gray-300"
+                >Composition:</span
               >
-                <div
-                  class="absolute top-0 right-0 bg-primary-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg shadow-sm"
-                >
-                  TOP
-                </div>
+              <UBadge color="neutral" variant="subtle" class="font-mono font-bold text-sm">{{
+                team.finalComposition
+              }}</UBadge>
+            </div>
+            <UIcon
+              v-if="team.isSuboptimal"
+              name="i-lucide-alert-triangle"
+              class="size-5 text-amber-500"
+              title="No ideal compositions found, this is the best available"
+            />
+          </div>
 
-                <div class="flex items-center justify-between pr-8">
-                  <span
-                    class="text-sm font-bold text-gray-900 dark:text-white truncate"
-                    :title="hero.name"
-                  >
-                    {{ hero.name }}
-                  </span>
-                  <UBadge
-                    v-if="hero.role"
-                    :color="roleColors[hero.role as keyof typeof roleColors] || 'neutral'"
-                    variant="subtle"
-                    size="xs"
-                  >
-                    {{
-                      hero.role === 'sup'
-                        ? 'Support'
-                        : hero.role === 'dps'
-                          ? 'Damage'
-                          : hero.role === 'tnk'
-                            ? 'Tank'
-                            : 'Flex'
-                    }}
-                  </UBadge>
-                </div>
-
-                <div class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ hero.class || 'Unknown' }}
-                  <span v-if="hero.counter">/ {{ hero.counter }}</span>
-                </div>
-                <UButton
-                  block
-                  size="sm"
-                  color="primary"
-                  variant="soft"
-                  :icon="quickPick.selectedMyHeroes.includes(hero.name) ? '' : 'i-lucide-plus'"
-                  :disabled="quickPick.selectedMyHeroes.includes(hero.name) || quickPick.isLoading"
-                  @click="handleAddRecommendedHero(hero.name, hero.role)"
-                >
-                  {{
-                    quickPick.selectedMyHeroes.includes(hero.name)
-                      ? 'Already in Team'
-                      : 'Add to Team'
-                  }}
-                </UButton>
+          <!-- 📊 Metrics Grid -->
+          <div class="grid grid-cols-4 gap-2 mb-4">
+            <div class="bg-gray-50 dark:bg-gray-800/50 p-2 rounded text-center">
+              <div class="text-lg font-bold text-gray-900 dark:text-white">
+                {{ team.totalScore }}
               </div>
+              <div class="text-[10px] uppercase tracking-wider text-gray-500">Total</div>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-800/50 p-2 rounded text-center">
+              <div class="text-lg font-bold text-purple-600 dark:text-purple-400">
+                {{ team.synergyScore }}
+              </div>
+              <div class="text-[10px] uppercase tracking-wider text-gray-500">
+                Synergy ({{ team.synergyCount }})
+              </div>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-800/50 p-2 rounded text-center">
+              <div class="text-lg font-bold text-blue-600 dark:text-blue-400">
+                {{ team.tierScore }}
+              </div>
+              <div class="text-[10px] uppercase tracking-wider text-gray-500">Tier</div>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-800/50 p-2 rounded text-center">
+              <div class="text-lg font-bold text-green-600 dark:text-green-400">
+                {{ team.roleScore }}
+              </div>
+              <div class="text-[10px] uppercase tracking-wider text-gray-500">Role</div>
             </div>
           </div>
 
-          <div v-if="hasAlternatives" class="pt-4 border-t border-gray-200 dark:border-gray-700">
-            <h3
-              class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2"
+          <!-- Added Members List -->
+          <div class="space-y-2">
+            <p
+              class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2"
             >
-              <UIcon name="i-lucide-shuffle" class="size-4 text-gray-500" />
-              Alternative options (substitutes)
-            </h3>
-            <div class="flex flex-wrap gap-2">
+              Recommended Additions:
+            </p>
+            <div
+              v-for="heroName in team.addedMembers"
+              :key="heroName"
+              class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800/30 rounded border border-gray-100 dark:border-gray-700"
+            >
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium text-gray-900 dark:text-white">{{
+                  heroName
+                }}</span>
+                <UBadge
+                  v-if="sheetsStore.heroesList.find((h) => h.name === heroName)?.role"
+                  :color="
+                    roleColors[
+                      sheetsStore.heroesList.find((h) => h.name === heroName)!
+                        .role as keyof typeof roleColors
+                    ] || 'neutral'
+                  "
+                  variant="subtle"
+                  size="xs"
+                >
+                  {{
+                    sheetsStore.heroesList.find((h) => h.name === heroName)?.role === 'sup'
+                      ? 'Support'
+                      : sheetsStore.heroesList.find((h) => h.name === heroName)?.role === 'dps'
+                        ? 'Damage'
+                        : sheetsStore.heroesList.find((h) => h.name === heroName)?.role === 'tnk'
+                          ? 'Tank'
+                          : 'Flex'
+                  }}
+                </UBadge>
+              </div>
               <UButton
-                v-for="alt in alternatives"
-                :key="alt.name"
                 size="xs"
-                variant="ghost"
-                color="neutral"
-                :disabled="quickPick.selectedMyHeroes.includes(alt.name) || quickPick.isLoading"
-                @click="quickPick.toggleMyHero(alt.name)"
+                color="primary"
+                variant="soft"
+                icon="i-lucide-plus"
+                :disabled="quickPick.selectedMyHeroes.includes(heroName) || quickPick.isLoading"
+                @click="
+                  handleAddRecommendedHero(
+                    heroName,
+                    sheetsStore.heroesList.find((h) => h.name === heroName)?.role || null
+                  )
+                "
               >
-                {{ alt.name }}
-                <span class="ml-1 text-[10px] opacity-70">({{ alt.bestScore }})</span>
+                {{ quickPick.selectedMyHeroes.includes(heroName) ? 'Added' : 'Add' }}
               </UButton>
             </div>
           </div>
 
-          <details
-            class="group border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
-          >
+          <!-- Details Accordion -->
+          <details class="group mt-4 border-t border-gray-200 dark:border-gray-700 pt-3">
             <summary
-              class="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 list-none flex justify-between items-center transition-colors"
+              class="cursor-pointer text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 flex items-center gap-1 list-none"
             >
-              <span class="flex items-center gap-2">
-                <UIcon name="i-lucide-bar-chart-2" class="size-4" />
-                Show evaluation details
-              </span>
               <UIcon
                 name="i-lucide-chevron-down"
-                class="size-4 transition-transform group-open:rotate-180"
+                class="size-3 transition-transform group-open:rotate-180"
               />
+              Show evaluation details
             </summary>
             <div
-              class="p-4 text-xs space-y-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900"
-            >
-              <div
-                v-html="
-                  quickPick.lastResult?.groups?.[0]?.bestTeam?.formattedDetails ||
-                  'Evaluation details are not available'
-                "
-              />
-            </div>
+              class="mt-2 text-xs space-y-1 text-gray-600 dark:text-gray-300"
+              v-html="team.formattedDetails || 'No details available'"
+            />
           </details>
-        </div>
-      </UCard>
+        </UCard>
+      </div>
     </div>
 
     <!-- Links to other tools -->
