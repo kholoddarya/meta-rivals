@@ -9,8 +9,8 @@
   var MAX_MY = 5;
   var STORAGE_KEY = 'quickPickState_v5';
   var SEARCH_DEBOUNCE_MS = 200;
-  var MAX_STARS = 2;  // 🆕 Максимум звёзд
-  var starredEnemies = new Set();  // 🆕 Враги, требующие особого внимания
+  var MAX_STARS = 2;  // Максимум звёзд
+  var starredEnemies = new Set();  // Враги, требующие особого внимания
   
   // ==========================================
   // СОСТОЯНИЕ
@@ -82,7 +82,7 @@
     return '';
   }
 
-  // 🆕 Получение текущих опций из DOM
+  // Получение текущих опций из DOM
   function getCurrentOptions() {
     return {
       useSynergies: document.getElementById('useSynergies').checked,
@@ -94,7 +94,7 @@
     };
   }
 
-  // 🆕 Вычисление текущей раскладки "моих" героев
+  // Вычисление текущей раскладки "моих" героев
   function getCurrentComposition(myHeroes) {
     var counts = { sup: 0, dps: 0, tnk: 0 };
     if (!myHeroes || myHeroes.length === 0) return '0-0-0';
@@ -129,7 +129,7 @@
       if (el) el.addEventListener('change', saveState);
     });
     
-    // 🆕 Восстановление состояния сворачивания секции "Учитывать"
+    // Восстановление состояния сворачивания секции "Учитывать"
     try {
       var isCollapsed = localStorage.getItem('quickPickOptionsCollapsed') === '1';
       if (isCollapsed && DOM.optionsSection && DOM.optionsToggle) {
@@ -148,7 +148,7 @@
       }
     }
     
-    // 🆕 Восстановление количества отображаемых команд (без лимита)
+    // Восстановление количества отображаемых команд (без лимита)
     try {
       var savedMaxResults = localStorage.getItem('quickPickMaxResults');
       if (savedMaxResults && DOM.maxResultsInput) {
@@ -165,7 +165,7 @@
   })();
   
   function loadHeroesData() {
-    // 🆕 Показываем индикатор загрузки
+    // Показываем индикатор загрузки
     if (DOM.grid) {
       DOM.grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;">' +
         '<div style="display:inline-block;width:30px;height:30px;border:3px solid #f3f3f3;' +
@@ -256,14 +256,14 @@
       else {
         selectedEnemies.delete(heroName);
         selectedMyHeroes.delete(heroName);
-        starredEnemies.delete(heroName);  // 🆕 Снимаем звезду при бане
+        starredEnemies.delete(heroName);  // Снимаем звезду при бане
         bannedHeroes.add(heroName);
       }
     } else if (status === 'enemy') {
       if (bannedHeroes.has(heroName)) bannedHeroes.delete(heroName);
       if (selectedEnemies.has(heroName)) {
         selectedEnemies.delete(heroName);
-        starredEnemies.delete(heroName);  // 🆕 Снимаем звезду вместе со статусом врага
+        starredEnemies.delete(heroName);  // Снимаем звезду вместе со статусом врага
       } else {
         if (selectedEnemies.size >= MAX_ENEMIES) { alert('Максимум ' + MAX_ENEMIES + ' врагов!'); renderGrid(); updateCounters(); return; }
         selectedEnemies.add(heroName);
@@ -288,7 +288,7 @@
   }
 
   // ==========================================
-  // 🆕 УПРАВЛЕНИЕ ЗВЁЗДАМИ (ключевые враги)
+  // УПРАВЛЕНИЕ ЗВЁЗДАМИ (ключевые враги)
   // ==========================================
   function toggleStar(heroName) {
     if (starredEnemies.has(heroName)) {
@@ -300,7 +300,7 @@
         alert('Максимум ' + MAX_STARS + ' ключевых врагов!\n\nСнимите звезду с другого врага.');
         return;
       }
-      // 🆕 Автоматически делаем врагом, если им не является
+      // Автоматически делаем врагом, если им не является
       if (!selectedEnemies.has(heroName)) {
         if (selectedEnemies.size >= MAX_ENEMIES) {
           alert('Максимум ' + MAX_ENEMIES + ' врагов!');
@@ -362,7 +362,7 @@
   function clearEnemies() {
     if (selectedEnemies.size === 0 && starredEnemies.size === 0) return;
     selectedEnemies.clear();
-    starredEnemies.clear();  // 🆕 Сбрасываем звёзды вместе с врагами
+    starredEnemies.clear();  // Сбрасываем звёзды вместе с врагами
     renderGrid(); updateCounters(); updateCurrentComposition(); validateForm(); saveState();
   }
   function clearMyHeroes() {
@@ -380,7 +380,7 @@
     roleCounts.sup = 0; roleCounts.dps = 0; roleCounts.tnk = 0; roleCounts.flx = 0;
     updateRoleDisplay(); updateCurrentComposition(); validateForm(); saveState();
   }
-  // 🆕 Удаление персонажа из списка по клику на чип
+  // Удаление персонажа из списка по клику на чип
   function removeEnemy(name) {
     selectedEnemies.delete(name);
     starredEnemies.delete(name);
@@ -402,9 +402,9 @@
     afterListChange();
   }
   
-  // 🆕 Общая функция после изменения списка
+  // Общая функция после изменения списка
   function afterListChange() {
-    // 🆕 Очищаем поиск
+    // Очищаем поиск
     if (DOM.search) {
       DOM.search.value = '';
       currentSearch = '';
@@ -416,7 +416,7 @@
     saveState();
   }
   
-  // 🆕 Очистка ВСЕХ списков
+  // Очистка ВСЕХ списков
   function clearAll() {
     if (selectedEnemies.size === 0 && selectedMyHeroes.size === 0 && 
         bannedHeroes.size === 0 && starredEnemies.size === 0) return;
@@ -427,7 +427,7 @@
     afterListChange();
   }
   
-  // 🆕 Сворачивание секции "Учитывать"
+  // Сворачивание секции "Учитывать"
   function toggleOptionsSection() {
     if (!DOM.optionsSection || !DOM.optionsToggle) return;
     DOM.optionsSection.classList.toggle('collapsed');
@@ -437,7 +437,7 @@
       localStorage.setItem('quickPickOptionsCollapsed', isCollapsed ? '1' : '0');
     } catch (e) {}
   }
-  // 🆕 Обновление количества отображаемых команд
+  // Обновление количества отображаемых команд
   function updateMaxResults(value) {
     var val = parseInt(value);
     if (isNaN(val) || val < 1) val = 1;
@@ -496,7 +496,7 @@
       });
     }
     
-    // 🆕 Кликабельные чипы с крестиком
+    // Кликабельные чипы с крестиком
     function renderClickableHeroes(names, variant, removeFn) {
       if (names.length === 0) return '<span class="empty">не выбраны</span>';
       var sorted = sortHeroesByRole(names);
@@ -525,7 +525,7 @@
         Array.from(selectedEnemies), 'enemy', 'removeEnemy'
       );
     }
-    // 🆕 Блок банов
+    // Блок банов
     if (DOM.currentBans) {
       if (bannedHeroes.size > 0) {
         var banList = sortHeroesByRole(Array.from(bannedHeroes));
@@ -696,7 +696,7 @@
         return;
       }
       
-      // 🆕 Итоговая раскладка "моих" героев (один раз на все группы)
+      // Итоговая раскладка "моих" героев (один раз на все группы)
       var currentComp = getCurrentComposition(result.myHeroes || []);
       
       var html = '';
@@ -731,7 +731,7 @@
             var heroRole = heroData ? heroData.role : null;
             var heroIconChar = getRoleIcon(heroRole);
             
-            // 🆕 Показываем вес базового героя В РАМКАХ КОМПОЗИЦИИ (= оценка лучшей команды)
+            // Показываем вес базового героя В РАМКАХ КОМПОЗИЦИИ (= оценка лучшей команды)
             var weightText = '';
             if (hasAlt && slot.baseHeroWeight !== undefined) {
               weightText = '<span class="hero-weight" title="Оценка команды с этим героем">[' + slot.baseHeroWeight.toFixed(1) + ']</span>';
@@ -761,10 +761,10 @@
               escapeHtml((icon ? icon + ' ' : '') + slot.baseHero + baseWeightText) + 
               '</option>';
             
-            // 🆕 Альтернативы отсортированы по весу в рамках композиции
+            // Альтернативы отсортированы по весу в рамках композиции
             opts += slot.alternatives.map(function(alt, altIdx) {
               var aIcon = getRoleIcon(alt.role);
-              // 🆕 Показываем вес в рамках композиции (оценку команды с этой альтернативой)
+              // Показываем вес в рамках композиции (оценку команды с этой альтернативой)
               var weightText = alt.compositionWeight !== undefined 
                 ? ' [' + alt.compositionWeight.toFixed(1) + ']' 
                 : '';
@@ -788,7 +788,7 @@
           ? group.slotAlternatives.reduce(function(s, x){return s + x.alternatives.length;}, 0) 
           : 0;
         
-        // 🆕 Итоговая раскладка всей команды (уже вычислена на сервере)
+        // Итоговая раскладка всей команды (уже вычислена на сервере)
         var finalComp = group.baseComposition || '';
         var addedCount = group.baseMembers ? group.baseMembers.length : 0;
         
@@ -804,7 +804,7 @@
           compTooltip = 'Итоговая раскладка команды: ' + finalComp;
         }
         
-        // 🆕 Оценка лучшей команды группы
+        // Оценка лучшей команды группы
         var teamWeightHtml = '';
         if (group.bestTeamWeight !== undefined) {
           teamWeightHtml = '<span class="meta-badge weight" title="Оценка лучшей команды в группе">💪 ' + group.bestTeamWeight.toFixed(1) + '</span>';
@@ -851,7 +851,7 @@
   }
   
   // ==========================================
-  // 🆕 ВЫБОР АЛЬТЕРНАТИВЫ С ПЕРЕСЧЁТОМ ОЦЕНКИ
+  // ВЫБОР АЛЬТЕРНАТИВЫ С ПЕРЕСЧЁТОМ ОЦЕНКИ
   // ==========================================
   function selectSlotAlternative(selectEl) {
     if (!lastResult || !lastResult.groups) return;
@@ -863,7 +863,7 @@
     
     var groupEl = selectEl.closest('.team-group');
     
-    // 🆕 Собираем текущую комбинацию героев: база + выбранные альтернативы
+    // Собираем текущую комбинацию героев: база + выбранные альтернативы
     var currentMembers = group.baseMembers.slice(); // копия базы
     var allSelects = groupEl.querySelectorAll('.slot-select');
     
@@ -887,14 +887,14 @@
       }
     }
     
-    // 🆕 Показываем индикатор пересчёта
+    // Показываем индикатор пересчёта
     showGroupLoading(groupEl);
     
-    // 🆕 Счётчик для отмены устаревших запросов
+    // Счётчик для отмены устаревших запросов
     evaluationCounter++;
     var myCounter = evaluationCounter;
     
-    // 🆕 Запрашиваем серверный пересчёт
+    // Запрашиваем серверный пересчёт
     google.script.run
       .withSuccessHandler(function(result) {
         // Если пришёл устаревший ответ — игнорируем
@@ -942,7 +942,7 @@
       );
   }
 
-  // 🆕 Показ индикатора пересчёта
+  // Показ индикатора пересчёта
   function showGroupLoading(groupEl) {
     var metaEl = groupEl.querySelector('.group-meta');
     if (metaEl && !metaEl.querySelector('.evaluation-loading')) {
@@ -953,7 +953,7 @@
     }
   }
   
-  // 🆕 Скрытие индикатора
+  // Скрытие индикатора
   function hideGroupLoading(groupEl) {
     var loader = groupEl.querySelector('.evaluation-loading');
     if (loader) loader.remove();

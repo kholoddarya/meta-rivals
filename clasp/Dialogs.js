@@ -24,7 +24,7 @@ function getCommonJs() {
         '</div>';
     }
     
-    // 🆕 Завершить настройки и запустить генерацию
+    // Завершить настройки и запустить генерацию
     // currentKey — ключ текущей страницы, чтобы пометить её как пройденную
     function finishAndGenerate(currentKey) {
       showSpinner('Запуск генерации...');
@@ -39,7 +39,7 @@ function getCommonJs() {
         .finishSettingsAndGenerate(currentKey);
     }
     
-    // 🆕 Продолжить настройки — пометить текущую и открыть следующую
+    // Продолжить настройки — пометить текущую и открыть следующую
     // currentKey — ключ текущей страницы
     function continueSettings(currentKey) {
       showSpinner('Переход к следующей настройке...');
@@ -53,27 +53,27 @@ function getCommonJs() {
         .withFailureHandler(err => showError(err))
         .finishCurrentSetting(currentKey);
     }
-  `;
+  `
 }
 
 // ==========================================
-// 🆕 УНИВЕРСАЛЬНЫЙ БЛОК ДЕЙСТВИЙ
+// УНИВЕРСАЛЬНЫЙ БЛОК ДЕЙСТВИЙ
 // ==========================================
 function getActionsBlockHtml(currentSettingKey) {
-  const unvisited = getUnvisitedSettings();
-  const unvisitedOther = unvisited.filter(p => p.key !== currentSettingKey);
-  
-  const listHtml = unvisitedOther.length > 0
-    ? `<ul style="margin:5px 0 0 0;padding-left:20px;font-size:12px;color:#555;">
-        ${unvisitedOther.map(p => `<li style="margin:3px 0;">${p.name}</li>`).join('')}
+  const unvisited = getUnvisitedSettings()
+  const unvisitedOther = unvisited.filter((p) => p.key !== currentSettingKey)
+
+  const listHtml =
+    unvisitedOther.length > 0
+      ? `<ul style="margin:5px 0 0 0;padding-left:20px;font-size:12px;color:#555;">
+        ${unvisitedOther.map((p) => `<li style="margin:3px 0;">${p.name}</li>`).join('')}
        </ul>`
-    : `<div style="font-size:12px;color:#388e3c;margin-top:5px;font-weight:bold;">✅ Все настройки пройдены!</div>`;
-  
-  const continueDisabled = unvisitedOther.length === 0 
-    ? 'disabled style="opacity:0.5;cursor:not-allowed;"' 
-    : '';
-  
-  // 🆕 Передаём currentSettingKey в клиентские функции
+      : `<div style="font-size:12px;color:#388e3c;margin-top:5px;font-weight:bold;">✅ Все настройки пройдены!</div>`
+
+  const continueDisabled =
+    unvisitedOther.length === 0 ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''
+
+  // Передаём currentSettingKey в клиентские функции
   return `
     <div style="margin-top:20px;padding:15px;background:#f5f5f5;border-radius:6px;border:1px solid #e0e0e0;">
       <div style="font-weight:bold;color:#333;margin-bottom:8px;">📋 Осталось настроить:</div>
@@ -89,16 +89,16 @@ function getActionsBlockHtml(currentSettingKey) {
         </button>
       </div>
     </div>
-  `;
+  `
 }
 
 // ==========================================
 // 📊 ОСНОВНЫЕ ПАРАМЕТРЫ
 // ==========================================
 function showMainSettings() {
-  const settings = loadSettings();
-  const actionsBlock = getActionsBlockHtml("main");
-  
+  const settings = loadSettings()
+  const actionsBlock = getActionsBlockHtml('main')
+
   const html = `
     <div style="padding:20px;font-family:Arial,sans-serif;font-size:13px;">
       <h3 style="margin-top:0;">📊 Основные параметры</h3>
@@ -170,37 +170,39 @@ function showMainSettings() {
           .saveMainSettingsData(data);
       }
     </script>
-  `;
+  `
   SpreadsheetApp.getUi().showModalDialog(
     HtmlService.createHtmlOutput(html).setWidth(450).setHeight(700),
     'Основные параметры'
-  );
+  )
 }
 
 // ==========================================
 // 🎯 РАСКЛАДКИ И ОБЯЗАТЕЛЬНЫЕ ПЕРСОНАЖИ
 // ==========================================
 function showMustHaveHeroes() {
-  const settings = loadSettings();
-  const heroes = getHeroList();
+  const settings = loadSettings()
+  const heroes = getHeroList()
   if (heroes.length === 0) {
-    SpreadsheetApp.getUi().alert('❌ Лист матрицы не найден или пуст!');
-    return;
+    SpreadsheetApp.getUi().alert('❌ Лист матрицы не найден или пуст!')
+    return
   }
-  
-  const actionsBlock = getActionsBlockHtml("compositions");
-  const compositions = settings.ROLE_COMPOSITIONS.join('\n');
-  const selectedSet = new Set(settings.MUST_HAVE_HEROES || []);
-  
-  const items = heroes.map((h, i) => {
-    const checked = selectedSet.has(h) ? 'checked' : '';
-    const escaped = h.replace(/"/g, '&quot;').replace(/</g, '&lt;');
-    return `<div class="hero-item" data-name="${h.toLowerCase()}" style="padding:6px 8px;display:flex;align-items:center;border-bottom:1px solid #eee;">
+
+  const actionsBlock = getActionsBlockHtml('compositions')
+  const compositions = settings.ROLE_COMPOSITIONS.join('\n')
+  const selectedSet = new Set(settings.MUST_HAVE_HEROES || [])
+
+  const items = heroes
+    .map((h, i) => {
+      const checked = selectedSet.has(h) ? 'checked' : ''
+      const escaped = h.replace(/"/g, '&quot;').replace(/</g, '&lt;')
+      return `<div class="hero-item" data-name="${h.toLowerCase()}" style="padding:6px 8px;display:flex;align-items:center;border-bottom:1px solid #eee;">
       <input type="checkbox" class="hero-cb" id="hero_${i}" value="${escaped}" ${checked} style="margin-right:10px;">
       <label for="hero_${i}" style="cursor:pointer;flex:1;">${escaped}</label>
-    </div>`;
-  }).join('');
-  
+    </div>`
+    })
+    .join('')
+
   const html = `
     <div style="padding:20px;font-family:Arial,sans-serif;font-size:13px;">
       <h3 style="margin-top:0;color:#1976d2;">🎯 Раскладки ролей</h3>
@@ -329,30 +331,30 @@ function showMustHaveHeroes() {
       updateCount();
       updateSaveBtn();
     </script>
-  `;
+  `
   SpreadsheetApp.getUi().showModalDialog(
     HtmlService.createHtmlOutput(html).setWidth(450).setHeight(780),
     'Раскладки и обязательные персонажи'
-  );
+  )
 }
 
-// 🆕 Для совместимости
+// Для совместимости
 function showCompositionSettings() {
-  showMustHaveHeroes();
+  showMustHaveHeroes()
 }
 
 // ==========================================
 // ⚖️ ВЕСА ОЦЕНОК И ТИРОВ
 // ==========================================
 function showWeightSettings() {
-  const settings = loadSettings();
-  const actionsBlock = getActionsBlockHtml("weights");
-  
-  const cw = settings.CLASS_WEIGHTS || { "Dive": 0, "Poke": 0, "Brawl": 0 };
-  const arw = settings.ANTI_ROLE_WEIGHTS || { "Anti-Dive": 0, "Anti-Poke": 0, "Anti-Brawl": 0 };
-  // 🆕 Веса ролей
-  const rw = settings.ROLE_WEIGHTS || { sup: 1, dps: 3, tnk: 2 };
-  
+  const settings = loadSettings()
+  const actionsBlock = getActionsBlockHtml('weights')
+
+  const cw = settings.CLASS_WEIGHTS || { Dive: 0, Poke: 0, Brawl: 0 }
+  const arw = settings.ANTI_ROLE_WEIGHTS || { 'Anti-Dive': 0, 'Anti-Poke': 0, 'Anti-Brawl': 0 }
+  // Веса ролей
+  const rw = settings.ROLE_WEIGHTS || { sup: 1, dps: 3, tnk: 2 }
+
   const html = `
     <div style="padding:20px;font-family:Arial,sans-serif;font-size:13px;max-height:90vh;overflow-y:auto;">
       <h3 style="margin-top:0;color:#1976d2;">⚖️ Веса оценок синергий</h3>
@@ -412,7 +414,7 @@ function showWeightSettings() {
         <label><b>Anti-Brawl:</b></label><input type="number" id="ANTI_BRAWL" value="${arw['Anti-Brawl']}" style="padding:5px;">
       </div>
       
-      <!-- 🆕 Веса ролей -->
+      <!-- Веса ролей -->
       <h3 style="color:#00695c;">🎯 Веса ролей</h3>
       <p style="color:#666;font-size:11px;margin:0 0 10px 0;">Влияние роли на оценку команды (DPS обычно важнее Sup)</p>
       <div style="display:grid;grid-template-columns:100px 1fr;gap:10px;align-items:center;margin-bottom:20px;padding:15px;background:#e0f2f1;border-radius:6px;">
@@ -421,7 +423,7 @@ function showWeightSettings() {
         <label><b>🛡️ Tnk:</b></label><input type="number" id="ROLE_TNK" value="${rw.tnk}" min="0" style="padding:5px;">
       </div>
       
-      <!-- 🆕 Heavy class бонус -->
+      <!-- Heavy class бонус -->
       <h3 style="color:#bf360c;">🔥 Бонус за однородность классов</h3>
       <div style="margin-bottom:15px;padding:10px;background:#fbe9e7;border-radius:4px;">
         <label style="display:flex;align-items:center;cursor:pointer;">
@@ -490,13 +492,13 @@ function showWeightSettings() {
             "Anti-Poke": parseInt(document.getElementById('ANTI_POKE').value) || 0,
             "Anti-Brawl": parseInt(document.getElementById('ANTI_BRAWL').value) || 0
           },
-          // 🆕 Веса ролей
+          // Веса ролей
           ROLE_WEIGHTS: {
             "sup": parseInt(document.getElementById('ROLE_SUP').value) || 0,
             "dps": parseInt(document.getElementById('ROLE_DPS').value) || 0,
             "tnk": parseInt(document.getElementById('ROLE_TNK').value) || 0
           },
-          // 🆕 Heavy class
+          // Heavy class
           USE_HEAVY_CLASS: useHeavy,
           HEAVY_CLASS_BONUS: parseInt(document.getElementById('HEAVY_CLASS_BONUS').value) || 0
         };
@@ -511,20 +513,20 @@ function showWeightSettings() {
           .saveWeightsData(data);
       }
     </script>
-  `;
+  `
   SpreadsheetApp.getUi().showModalDialog(
     HtmlService.createHtmlOutput(html).setWidth(450).setHeight(900),
     'Веса оценок и тиров'
-  );
+  )
 }
 
 // ==========================================
 // ✏️ ИМЕНА СЛУЖЕБНЫХ ЛИСТОВ
 // ==========================================
 function showServiceSheetsSettings() {
-  const settings = loadSettings();
-  const actionsBlock = getActionsBlockHtml("sheets");
-  
+  const settings = loadSettings()
+  const actionsBlock = getActionsBlockHtml('sheets')
+
   const html = `
     <div style="padding:20px;font-family:Arial,sans-serif;font-size:13px;">
       <h3 style="margin-top:0;">📝 Имена служебных листов</h3>
@@ -613,45 +615,47 @@ function showServiceSheetsSettings() {
           .saveServiceSheetsData(data);
       }
     </script>
-  `;
+  `
   SpreadsheetApp.getUi().showModalDialog(
     HtmlService.createHtmlOutput(html).setWidth(450).setHeight(700),
     'Имена служебных листов'
-  );
+  )
 }
 
 // ==========================================
 // ⚔️ ПРОТИВ ВРАЖЕСКОЙ КОМПОЗИЦИИ
 // ==========================================
 function showCounterPickSettings() {
-  const settings = loadSettings();
-  const heroes = getHeroList();
-  
+  const settings = loadSettings()
+  const heroes = getHeroList()
+
   if (heroes.length === 0) {
-    SpreadsheetApp.getUi().alert('❌ Лист матрицы не найден или пуст!');
-    return;
+    SpreadsheetApp.getUi().alert('❌ Лист матрицы не найден или пуст!')
+    return
   }
-  
-  const enemySet = new Set(settings.ENEMY_COMPOSITION || []);
-  const counterComp = settings.COUNTER_ROLE_COMPOSITION || { sup: 1, dps: 1, tnk: 1 };
-  
-  // 🆕 Блок действий с кнопками "Завершить и сгенерировать" / "Продолжить настройки"
-  const actionsBlock = getActionsBlockHtml("counter");
-  
-  // 🆕 Безопасное экранирование имени листа
-  const safeSheetName = escapeAttr(settings.COUNTER_RESULT_SHEET_NAME || "Counter");
-  
-  // 🆕 Генерация списка героев с экранированием
-  const items = heroes.map((h, i) => {
-    const checked = enemySet.has(h) ? 'checked' : '';
-    const escaped = escapeHtml(h);
-    const dataName = escapeAttr(h.toLowerCase());
-    return `<div class="hero-item" data-name="${dataName}" style="padding:6px 8px;display:flex;align-items:center;border-bottom:1px solid #eee;">
+
+  const enemySet = new Set(settings.ENEMY_COMPOSITION || [])
+  const counterComp = settings.COUNTER_ROLE_COMPOSITION || { sup: 1, dps: 1, tnk: 1 }
+
+  // Блок действий с кнопками "Завершить и сгенерировать" / "Продолжить настройки"
+  const actionsBlock = getActionsBlockHtml('counter')
+
+  // Безопасное экранирование имени листа
+  const safeSheetName = escapeAttr(settings.COUNTER_RESULT_SHEET_NAME || 'Counter')
+
+  // Генерация списка героев с экранированием
+  const items = heroes
+    .map((h, i) => {
+      const checked = enemySet.has(h) ? 'checked' : ''
+      const escaped = escapeHtml(h)
+      const dataName = escapeAttr(h.toLowerCase())
+      return `<div class="hero-item" data-name="${dataName}" style="padding:6px 8px;display:flex;align-items:center;border-bottom:1px solid #eee;">
       <input type="checkbox" class="enemy-cb" id="enemy_${i}" value="${escaped}" ${checked} style="margin-right:10px;">
       <label for="enemy_${i}" style="cursor:pointer;flex:1;">${escaped}</label>
-    </div>`;
-  }).join('');
-  
+    </div>`
+    })
+    .join('')
+
   const html = `
     <div style="padding:20px;font-family:Arial,sans-serif;font-size:13px;">
       <h3 style="margin-top:0;color:#d32f2f;">⚔️ Режим: Против вражеской композиции</h3>
@@ -721,7 +725,7 @@ function showCounterPickSettings() {
         </button>
       </div>
       
-      <!-- 🆕 Блок действий: продолжить или завершить -->
+      <!-- Блок действий: продолжить или завершить -->
       ${actionsBlock}
     </div>
     <script>
@@ -889,28 +893,29 @@ function showCounterPickSettings() {
       updateCompositionMsg();
       validate();
     </script>
-  `;
-  
+  `
+
   SpreadsheetApp.getUi().showModalDialog(
     HtmlService.createHtmlOutput(html).setWidth(450).setHeight(850),
     'Против вражеской композиции'
-  );
+  )
 }
 
 // ==========================================
-// 🆕 ЗАЩИТА ОТ XSS — ЭКРАНИРОВАНИЕ HTML
+// ЗАЩИТА ОТ XSS — ЭКРАНИРОВАНИЕ HTML
 // ==========================================
 function escapeHtml(text) {
-  if (text === null || text === undefined) return '';
-  return text.toString()
+  if (text === null || text === undefined) return ''
+  return text
+    .toString()
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/'/g, '&#039;')
 }
 
-// 🆕 Специальное экранирование для атрибутов
+// Специальное экранирование для атрибутов
 function escapeAttr(text) {
-  return escapeHtml(text).replace(/\n/g, ' ').replace(/\r/g, '');
+  return escapeHtml(text).replace(/\n/g, ' ').replace(/\r/g, '')
 }

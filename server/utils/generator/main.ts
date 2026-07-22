@@ -11,6 +11,14 @@ import { getCombinations, insertToTop, generateFlxDistributions } from './utils'
 import { evaluateTeam } from './evaluator'
 import { buildCompositionsToGenerate, DEFAULT_SETTINGS } from '../generatorSettings'
 
+interface RoleDistribution {
+  sup: number
+  dps: number
+  tnk: number
+  weight: number
+  finalComp: string
+}
+
 // Построение графа синергий
 function buildSynergyGraph(
   rowHeaders: string[],
@@ -290,7 +298,7 @@ export function runQuickPickGeneration(
   try {
     const opts = {
       ...input.options,
-      maxResults: 10,
+      maxResults: Math.max(1, input.options.maxResults ?? DEFAULT_SETTINGS.MAX_RESULTS ?? 10),
     }
     const bannedSet = new Set(input.banned || [])
 
@@ -307,6 +315,13 @@ export function runQuickPickGeneration(
       .filter((h) => !bannedSet.has(h))
       .map((h) => rowHeaders.indexOf(h))
       .filter((idx) => idx !== -1)
+
+    // Роли уже выбранных героев — критично для правильного подбора приоритетной композиции
+    const myHeroRoleCounts: Record<RoleType, number> = { sup: 0, dps: 0, tnk: 0 }
+    for (const idx of myHeroIndices) {
+      const role = rolesMap.get(rowHeaders[idx])
+      if (role) myHeroRoleCounts[role]++
+    }
 
     const bannedIndices = new Set(
       rowHeaders.map((name, i) => (bannedSet.has(name) ? i : -1)).filter((i) => i !== -1)
@@ -356,59 +371,70 @@ export function runQuickPickGeneration(
       }
     }
 
-    // ДОБАВЛЯЕМ роли героев, которые пользователь уже выбрал в "Heroes"
-    // for (const heroName of input.myHeroes) {
-    //   const role = rolesMap.get(heroName)
-    //   if (role && (role === 'sup' || role === 'dps' || role === 'tnk')) {
-    //     fixedRoles[role]++
-    //   }
-    // }
+    // Полный размер команды = уже выбранные герои + запрошенные роли (в т.ч. флексы)
+    const totalTeamSize =
+      fixedRoles.sup + fixedRoles.dps + fixedRoles.tnk + flxCount + myHeroIndices.length
 
-    // Если пользователь выбрал больше героев, чем TEAM_SIZE, ограничиваем
-    const totalFixed = fixedRoles.sup + fixedRoles.dps + fixedRoles.tnk + flxCount
-    if (totalFixed > 6) {
-      // В идеале это должно блокироваться на фронте, но на всякий случай
-      return { success: false, error: 'Total selected heroes and roles exceed team size of 6.' }
+    if (totalTeamSize > DEFAULT_SETTINGS.TEAM_SIZE) {
+      return {
+        success: false,
+        error: `Selected heroes and roles (${totalTeamSize}) exceed team size of ${DEFAULT_SETTINGS.TEAM_SIZE}.`,
+      }
     }
 
-    // Получаем все валидные раскладки с их весами приоритета
+    // Все валидные раскладки на полную команду (6), с весом приоритета
     const prioritizedCompositions = buildCompositionsToGenerate(
       DEFAULT_SETTINGS.ROLE_COMPOSITIONS,
       DEFAULT_SETTINGS.TEAM_SIZE
     )
 
-    let distributionsToProcess: any[] = []
+    const compositionWeightsMap: Record<string, number> = {}
+    prioritizedCompositions.forEach((c) => {
+      compositionWeightsMap[`${c.sup}-${c.dps}-${c.tnk}`] = c.weight
+    })
+
+    let distributionsToProcess: RoleDistribution[] = []
 
     if (flxCount === 0) {
-      // 🎯 ЕСЛИ FLEX НЕТ: мы просто используем запрошенные роли как есть.
-      // Финальная композиция будет корректно посчитана в evaluator.ts на основе всех 6 героев.
+      // Флексов нет — раскладка полностью зафиксирована слайдерами + уже выбранными героями.
+      // Вес всё равно берём из приоритетного списка, чтобы группы сортировались осмысленно.
+      const finalSup = fixedRoles.sup + myHeroRoleCounts.sup
+      const finalDps = fixedRoles.dps + myHeroRoleCounts.dps
+      const finalTnk = fixedRoles.tnk + myHeroRoleCounts.tnk
+      const finalComp = `${finalSup}-${finalDps}-${finalTnk}`
+
       distributionsToProcess = [
         {
           sup: fixedRoles.sup,
           dps: fixedRoles.dps,
           tnk: fixedRoles.tnk,
-          weight: 1, // Базовый вес, итоговая оценка будет зависеть от реальной finalComposition
-          finalComp: 'pending', // Будет перезаписано корректным значением внутри evaluateTeam
+          weight: compositionWeightsMap[finalComp] || 0,
+          finalComp,
         },
       ]
     } else {
-      // 🎯 ЕСЛИ FLEX ЕСТЬ: распределяем их, чтобы достичь приоритетных композиций
+      // Есть флексы — подбираем их так, чтобы ФИНАЛЬНАЯ (с учётом уже выбранных героев)
+      // композиция как можно точнее совпадала с приоритетным списком.
       const validDistributions = prioritizedCompositions
-        .filter(
-          (comp) =>
-            comp.sup >= fixedRoles.sup &&
-            comp.dps >= fixedRoles.dps &&
-            comp.tnk >= fixedRoles.tnk &&
+        .filter((comp) => {
+          const flexNeeded =
             comp.sup -
-              fixedRoles.sup +
-              (comp.dps - fixedRoles.dps) +
-              (comp.tnk - fixedRoles.tnk) ===
-              flxCount
-        )
+            fixedRoles.sup -
+            myHeroRoleCounts.sup +
+            (comp.dps - fixedRoles.dps - myHeroRoleCounts.dps) +
+            (comp.tnk - fixedRoles.tnk - myHeroRoleCounts.tnk)
+
+          return (
+            comp.sup >= fixedRoles.sup + myHeroRoleCounts.sup &&
+            comp.dps >= fixedRoles.dps + myHeroRoleCounts.dps &&
+            comp.tnk >= fixedRoles.tnk + myHeroRoleCounts.tnk &&
+            flexNeeded === flxCount
+          )
+        })
         .map((comp) => ({
-          sup: comp.sup - fixedRoles.sup,
-          dps: comp.dps - fixedRoles.dps,
-          tnk: comp.tnk - fixedRoles.tnk,
+          sup: comp.sup - fixedRoles.sup - myHeroRoleCounts.sup,
+          dps: comp.dps - fixedRoles.dps - myHeroRoleCounts.dps,
+          tnk: comp.tnk - fixedRoles.tnk - myHeroRoleCounts.tnk,
           weight: comp.weight,
           finalComp: `${comp.sup}-${comp.dps}-${comp.tnk}`,
         }))
@@ -416,19 +442,19 @@ export function runQuickPickGeneration(
       if (validDistributions.length > 0) {
         distributionsToProcess = validDistributions
       } else {
-        // Фоллбэк: если запрошенные роли + флексы не дают ни одной валидной композиции,
-        // просто перебираем все варианты распределения флексов с весом 0
+        // Фоллбэк: ни одна приоритетная раскладка не достижима с текущим набором —
+        // перебираем все варианты распределения флексов с нейтральным весом 0
         distributionsToProcess = generateFlxDistributions(flxCount).map((d) => ({
           sup: d.sup,
           dps: d.dps,
           tnk: d.tnk,
           weight: 0,
-          finalComp: `${fixedRoles.sup + d.sup}-${fixedRoles.dps + d.dps}-${fixedRoles.tnk + d.tnk}`,
+          finalComp: `${fixedRoles.sup + d.sup + myHeroRoleCounts.sup}-${fixedRoles.dps + d.dps + myHeroRoleCounts.dps}-${fixedRoles.tnk + d.tnk + myHeroRoleCounts.tnk}`,
         }))
       }
     }
 
-    // Сортируем по весу (приоритету), чтобы генератор в первую очередь проверял лучшие композиции
+    // Сортируем по весу, чтобы генератор в первую очередь проверял лучшие композиции
     distributionsToProcess.sort((a, b) => b.weight - a.weight)
 
     const context: GeneratorContext = {
@@ -456,8 +482,8 @@ export function runQuickPickGeneration(
     let totalIterations = 0
     let skippedByBound = 0
 
-    // Итерируемся по отсортированным дистрибуциям
     for (const dist of distributionsToProcess) {
+      // Итоговое число героев каждой роли, которых нужно НАБРАТЬ (слайдеры + флекс)
       const totalRoles = {
         sup: fixedRoles.sup + dist.sup,
         dps: fixedRoles.dps + dist.dps,
@@ -472,9 +498,10 @@ export function runQuickPickGeneration(
         continue
       }
 
-      const supComb = getCombinations(charactersByRole.sup, dist.sup)
-      const dpsComb = getCombinations(charactersByRole.dps, dist.dps)
-      const tnkComb = getCombinations(charactersByRole.tnk, dist.tnk)
+      // 🛠 Было dist.sup/dps/tnk — учитывало только флекс-добавку и теряло heroes из fixedRoles
+      const supComb = getCombinations(charactersByRole.sup, totalRoles.sup)
+      const dpsComb = getCombinations(charactersByRole.dps, totalRoles.dps)
+      const tnkComb = getCombinations(charactersByRole.tnk, totalRoles.tnk)
 
       const compStr = dist.finalComp
       const compWeight = dist.weight

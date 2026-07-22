@@ -35,7 +35,7 @@ export const useSheetsStore = defineStore('sheets', () => {
     try {
       const data = await $fetch<RawSheetData>('/api/sheets')
 
-      // 🆕 Вспомогательная функция для безопасного получения значения по возможным именам колонок
+      // Вспомогательная функция для безопасного получения значения по возможным именам колонок
       const getCell = (row: Record<string, any>, possibleKeys: string[]): string => {
         for (const key of Object.keys(row)) {
           const cleanKey = key.trim().toLowerCase()

@@ -3,26 +3,31 @@
 // ==========================================
 
 function showGenerationProgress() {
-  const settings = loadSettings();
-  
-  // 🆕 Экранируем все пользовательские данные
-  const heroes = settings.MUST_HAVE_HEROES.length > 0 
-    ? escapeHtml(settings.MUST_HAVE_HEROES.join(', ')) 
-    : 'не выбраны';
-  
-  const modeText = settings.GENERATION_MODE === "counter" 
-    ? `⚔️ Против: ${escapeHtml(settings.ENEMY_COMPOSITION.join(', '))}` 
-    : '🎯 Обычный режим';
-  
-  const safeSheetName = escapeHtml(settings.COUNTER_RESULT_SHEET_NAME);
+  const settings = loadSettings()
 
-const counterInfo = settings.GENERATION_MODE === "counter" ? `
+  // Экранируем все пользовательские данные
+  const heroes =
+    settings.MUST_HAVE_HEROES.length > 0
+      ? escapeHtml(settings.MUST_HAVE_HEROES.join(', '))
+      : 'не выбраны'
+
+  const modeText =
+    settings.GENERATION_MODE === 'counter'
+      ? `⚔️ Против: ${escapeHtml(settings.ENEMY_COMPOSITION.join(', '))}`
+      : '🎯 Обычный режим'
+
+  const safeSheetName = escapeHtml(settings.COUNTER_RESULT_SHEET_NAME)
+
+  const counterInfo =
+    settings.GENERATION_MODE === 'counter'
+      ? `
   <div style="margin-top:8px;padding:8px;background:#ffebee;border-radius:4px;">
     <div style="font-size:11px;color:#c62828;"><b>Режим контр-пика:</b></div>
     <div style="font-size:11px;color:#555;">Состав: ${settings.COUNTER_ROLE_COMPOSITION.sup}-${settings.COUNTER_ROLE_COMPOSITION.dps}-${settings.COUNTER_ROLE_COMPOSITION.tnk}</div>
     <div style="font-size:11px;color:#555;">Лист: ${settings.COUNTER_RESULT_SHEET_NAME}</div>
   </div>
-` : '';
+`
+      : ''
   const html = `
     <div id="progressContainer" style="padding:30px;font-family:Arial,sans-serif;font-size:13px;">
       <h3 style="margin-top:0;color:#1976d2;">🚀 Генерация команд</h3>
@@ -50,7 +55,7 @@ const counterInfo = settings.GENERATION_MODE === "counter" ? `
           <div><b>Тиры:</b> ${settings.USE_HERO_TIER ? '✅ Вкл' : '❌ Выкл'}</div>
           <div><b>Контрпики:</b> ${settings.USE_COUNTER_PICKS ? '✅ Вкл' : '❌ Выкл'}</div>
         </div>
-        ${counterInfo}  <!-- 🆕 ВОТ СЮДА ВСТАВЛЯЕМ -->
+        ${counterInfo}  <!-- ВОТ СЮДА ВСТАВЛЯЕМ -->
       </div>
       
       <div id="resultSection" style="display:none;">
@@ -96,7 +101,7 @@ const counterInfo = settings.GENERATION_MODE === "counter" ? `
             </div>
           \`;
         } else {
-          // 🆕 Улучшенный вывод ошибок
+          // Улучшенный вывод ошибок
           const fixHint = result.fixable 
             ? '<div style="margin-top:10px;font-size:11px;color:#666;">💡 Откройте меню <b>⚙️ Настройки</b> для исправления проблемы.</div>'
             : '<div style="margin-top:10px;font-size:11px;color:#666;">⚠️ Это внутренняя ошибка. Попробуйте обновить страницу или сообщить разработчику.</div>';
@@ -144,10 +149,10 @@ const counterInfo = settings.GENERATION_MODE === "counter" ? `
         resultSection.style.display = 'block';
       }
     </script>
-  `;
-  
+  `
+
   SpreadsheetApp.getUi().showModalDialog(
     HtmlService.createHtmlOutput(html).setWidth(500).setHeight(580),
     'Генерация команд'
-  );
+  )
 }

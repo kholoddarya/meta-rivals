@@ -110,39 +110,82 @@ const otherPages = [
   },
 ]
 
-// 🎯 Приоритетные композиции (должны совпадать с бэкендом)
 const VALID_COMPOSITIONS = ['2-2-2', '3-1-2', '3-2-1', '2-3-1', '2-1-3', '3-0-3', '4-1-1', '4-0-2']
 
-// 🆕 Умная фильтрация и сортировка топ-3 команд
-const topTeams = computed(() => {
-  if (!quickPick.lastResult?.success || !quickPick.lastResult?.teams?.length) return []
+// Кэш для перевода, чтобы не дергать API дважды для одинакового текста
+const translatedDetailsCache = ref<Record<string, string>>({})
+const isTranslatingCache = ref<Record<string, boolean>>({})
 
-  // 1. Фильтруем только валидные композиции
-  const validTeams = quickPick.lastResult.teams.filter((team: any) =>
-    VALID_COMPOSITIONS.includes(team.finalComposition)
-  )
+// Реактивный массив вместо computed, чтобы поддерживать асинхронный перевод
+const processedTopTeams = ref<any[]>([])
 
-  // 2. Если валидных нет, берем все (с пометкой "субоптимально"), иначе берем валидные
-  const pool = validTeams.length > 0 ? validTeams : quickPick.lastResult.teams
-  const hasValidComposition = validTeams.length > 0
+watch(
+  () => quickPick.lastResult?.teams,
+  async (newTeams) => {
+    if (!newTeams || newTeams.length === 0) {
+      processedTopTeams.value = []
+      return
+    }
 
-  // 3. Сортируем по totalScore и берем топ-3
-  return pool
-    .sort((a: any, b: any) => b.totalScore - a.totalScore)
-    .slice(0, 3)
-    .map((team: any, index: number) => ({
-      ...team,
-      rank:
-        index === 0
-          ? hasValidComposition
-            ? 'Top Pick'
-            : '⚠️ Best Available'
-          : index === 1
-            ? 'Alternative 1'
-            : 'Alternative 2',
-      isSuboptimal: !hasValidComposition,
-    }))
-})
+    // 1. Фильтруем и сортируем (логика осталась прежней)
+    const validTeams = newTeams.filter((team: any) =>
+      VALID_COMPOSITIONS.includes(team.finalComposition)
+    )
+    const pool = validTeams.length > 0 ? validTeams : newTeams
+    const hasValidComposition = validTeams.length > 0
+
+    const top3 = pool
+      .sort((a: any, b: any) => b.totalScore - a.totalScore)
+      .slice(0, 3)
+      .map((team: any, index: number) => ({
+        ...team,
+        rank:
+          index === 0
+            ? hasValidComposition
+              ? 'Top Pick'
+              : '⚠️ Best Available'
+            : `Alternative ${index}`,
+        isSuboptimal: !hasValidComposition,
+        displayDetails: team.formattedDetails || 'No details available', // Показываем исходный текст сразу
+      }))
+
+    processedTopTeams.value = top3
+
+    // 2. Асинхронный перевод для каждой команды
+    for (const team of processedTopTeams.value) {
+      const originalText = team.formattedDetails
+
+      // Переводим только если есть текст и в нем есть кириллица
+      if (originalText && /[а-яА-ЯёЁ]/.test(originalText)) {
+        if (!translatedDetailsCache.value[originalText]) {
+          isTranslatingCache.value[originalText] = true
+
+          try {
+            const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(originalText)}&langpair=ru|en`
+            const res = await fetch(url)
+            const data = await res.json()
+
+            if (data.responseStatus === 200) {
+              translatedDetailsCache.value[originalText] = data.responseData.translatedText
+            } else {
+              // Если API вернул ошибку, оставляем оригинал
+              translatedDetailsCache.value[originalText] = originalText
+            }
+          } catch (e) {
+            console.error('MyMemory translation error', e)
+            translatedDetailsCache.value[originalText] = originalText
+          } finally {
+            isTranslatingCache.value[originalText] = false
+          }
+        }
+
+        // Обновляем отображаемый текст на переведенный (или берем из кэша)
+        team.displayDetails = translatedDetailsCache.value[originalText] || originalText
+      }
+    }
+  },
+  { immediate: true }
+)
 
 const handleRoleChange = (role: 'sup' | 'dps' | 'tnk' | 'flx', delta: number) => {
   if (delta > 0 && totalTeamSize.value >= limits.totalTeam) {
@@ -254,7 +297,9 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
                   >
                 </div>
                 <div class="flex items-center gap-1">
-                  <UIcon name="i-lucide-star" class="size-4 text-warning-500" /><span>Star</span>
+                  <UIcon name="i-lucide-star" class="size-4 text-warning-500" /><span
+                    >Key enemy</span
+                  >
                 </div>
                 <div class="flex items-center gap-1">
                   <UIcon name="i-lucide-ban" class="size-4 text-gray-500" /><span>Ban</span>
@@ -493,8 +538,8 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
       </div>
     </div>
 
-    <!-- 🆕 Generation Result: Top 3 Teams -->
-    <div v-if="quickPick.lastResult && topTeams.length > 0" class="space-y-6">
+    <!-- Generation Result: Top 3 Teams -->
+    <div v-if="quickPick.lastResult && processedTopTeams.length > 0" class="space-y-6">
       <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
         <UIcon name="i-lucide-sparkles" class="size-6 text-primary-500" />
         Recommended Compositions
@@ -502,7 +547,7 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <UCard
-          v-for="(team, index) in topTeams"
+          v-for="(team, index) in processedTopTeams"
           :key="index"
           class="relative transition-all hover:shadow-lg"
           :class="
@@ -638,9 +683,10 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
               />
               Show evaluation details
             </summary>
+            <!-- Используем displayDetails вместо formattedDetails -->
             <div
               class="mt-2 text-xs space-y-1 text-gray-600 dark:text-gray-300"
-              v-html="team.formattedDetails || 'No details available'"
+              v-html="team.displayDetails || 'No details available'"
             />
           </details>
         </UCard>
