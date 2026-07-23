@@ -237,16 +237,19 @@ const handleAddRecommendedHero = (heroName: string, heroRole: string | null) => 
 
 <template>
   <div class="max-w-6xl mx-auto px-4 py-8 space-y-8">
-    <NuxtLink
-      to="/"
-      class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group w-fit"
-    >
-      <UIcon
-        name="i-lucide-arrow-left"
-        class="size-4 transition-transform group-hover:-translate-x-1"
-      />
-      Back to Home
-    </NuxtLink>
+    <div class="flex justify-between">
+      <NuxtLink
+        to="/"
+        class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group w-fit"
+      >
+        <UIcon
+          name="i-lucide-arrow-left"
+          class="size-4 transition-transform group-hover:-translate-x-1"
+        />
+        Back to Home
+      </NuxtLink>
+      <ThemeToggle />
+    </div>
 
     <div class="flex flex-col sm:flex-row justify-between gap-4">
       <div class="space-y-2">

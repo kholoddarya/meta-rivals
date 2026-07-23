@@ -80,16 +80,19 @@ const {
 
 <template>
   <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <NuxtLink
-      to="/"
-      class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group w-fit"
-    >
-      <UIcon
-        name="i-lucide-arrow-left"
-        class="size-4 transition-transform group-hover:-translate-x-1"
-      />
-      Back to Home
-    </NuxtLink>
+    <div class="flex justify-between">
+      <NuxtLink
+        to="/"
+        class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group w-fit"
+      >
+        <UIcon
+          name="i-lucide-arrow-left"
+          class="size-4 transition-transform group-hover:-translate-x-1"
+        />
+        Back to Home
+      </NuxtLink>
+      <ThemeToggle />
+    </div>
     <header class="mb-8 text-center">
       <div
         class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 mb-3"

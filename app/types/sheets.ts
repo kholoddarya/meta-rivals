@@ -21,3 +21,17 @@ export interface RoleRow {
   Hero: string
   Role: RoleType | string
 }
+
+export interface TeamUpRow {
+  heroA: string
+  roleA: string
+  tierA: string
+  heroB: string
+  roleB: string
+  tierB: string
+  grade: string
+  synergyScore: number
+  tierScore: number
+  roleScore: number
+  totalScore: number
+}

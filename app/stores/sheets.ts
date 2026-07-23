@@ -1,6 +1,6 @@
 // stores/sheets.ts
 import { defineStore } from 'pinia'
-import type { FullInfoRow, HeroTierRow, ClassDataRow, RoleType } from '~/types/sheets'
+import type { FullInfoRow, HeroTierRow, ClassDataRow, RoleType, TeamUpRow } from '~/types/sheets'
 
 interface RawSheetData {
   FullInfo: Record<string, string>[]
@@ -13,7 +13,8 @@ export const useSheetsStore = defineStore('sheets', () => {
   const fullInfo = ref<FullInfoRow[]>([])
   const heroTier = ref<HeroTierRow[]>([])
   const classData = ref<ClassDataRow[]>([])
-  const rolesMap = ref<Map<string, RoleType>>(new Map()) // имя героя → роль
+  const rolesMap = ref<Map<string, RoleType>>(new Map())
+
   const heroesList = ref<
     Array<{
       name: string
@@ -23,17 +24,32 @@ export const useSheetsStore = defineStore('sheets', () => {
     }>
   >([])
 
+  const teamUps = ref<TeamUpRow[]>([])
+
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
   const loadData = async () => {
-    if (fullInfo.value.length > 0) return
+    // Проверяем, что основные данные уже загружены, чтобы не делать лишних запросов
+    if (fullInfo.value.length > 0 && teamUps.value.length > 0) return
 
     isLoading.value = true
     error.value = null
 
     try {
+      // 1. Загружаем основные данные
       const data = await $fetch<RawSheetData>('/api/sheets')
+
+      // 2. Загружаем тимапы параллельно или последовательно
+      try {
+        const teamUpsRes = await $fetch<{ duos: TeamUpRow[] }>('/api/teamups')
+        teamUps.value = teamUpsRes.duos || []
+
+        console.log(teamUpsRes)
+      } catch (e) {
+        console.error('Failed to load team-ups in store:', e)
+        teamUps.value = [] // На случай ошибки оставляем пустой массив, чтобы не ломать UI
+      }
 
       // Вспомогательная функция для безопасного получения значения по возможным именам колонок
       const getCell = (row: Record<string, any>, possibleKeys: string[]): string => {
@@ -47,13 +63,13 @@ export const useSheetsStore = defineStore('sheets', () => {
         return typeof firstKey === 'string' ? String(row[firstKey] ?? '').trim() : ''
       }
 
-      // 1. FullInfo
+      // 3. FullInfo
       fullInfo.value = (data.FullInfo || []).filter((row): row is Record<string, string> => {
         const name = getCell(row, ['hero | anchor', 'hero', 'имя', 'персонаж'])
         return name !== ''
       }) as FullInfoRow[]
 
-      // 2. HeroTier
+      // 4. HeroTier
       const rawHeroTier = data.HeroTier || []
       heroTier.value = rawHeroTier
         .map((row) => ({
@@ -62,7 +78,7 @@ export const useSheetsStore = defineStore('sheets', () => {
         }))
         .filter((row) => row.Hero !== '')
 
-      // 3. ClassData
+      // 5. ClassData
       const rawClassData = data.Class || []
       classData.value = rawClassData
         .map((row) => ({
@@ -72,12 +88,10 @@ export const useSheetsStore = defineStore('sheets', () => {
         }))
         .filter((row) => row.Hero !== '')
 
-      // 4. Roles
+      // 6. Roles
       const rawRoles = data.Roles || []
       const rolesMapLocal = new Map<string, RoleType>()
 
-      // 🔥 ХАК ДЛЯ АДАМА УОРЛОКА: Если он используется как заголовок столбца, API не считает его строкой данных.
-      // Мы явно проверяем ключи первой строки и добавляем его, если он там.
       if (rawRoles.length > 0) {
         const firstRowKeys = Object.keys(rawRoles[0])
         if (firstRowKeys.length >= 2) {
@@ -86,7 +100,7 @@ export const useSheetsStore = defineStore('sheets', () => {
             potentialHero.toLowerCase().includes('adam') &&
             !['hero', 'имя', 'name', 'персонаж'].includes(potentialHero.toLowerCase())
           ) {
-            rolesMapLocal.set(potentialHero, 'sup') // Принудительно назначаем Support
+            rolesMapLocal.set(potentialHero, 'sup')
           }
         }
       }
@@ -109,15 +123,12 @@ export const useSheetsStore = defineStore('sheets', () => {
         rolesMapLocal.set(name, role)
       })
 
-      // 🔥 ЯВНАЯ ГАРАНТИЯ: Если Адам Уорлок все еще не в карте ролей, добавляем его как Support
       if (!rolesMapLocal.has('Adam Warlock')) {
         rolesMapLocal.set('Adam Warlock', 'sup')
       }
 
-      // 5. Собираем полный список героев
+      // 7. Собираем полный список героев
       const allHeroNames = new Set<string>()
-
-      // 🔥 Добавляем Адама Уорлока в список имен гарантированно, чтобы он точно отобразился
       allHeroNames.add('Adam Warlock')
 
       fullInfo.value.forEach((row: any) => {
@@ -148,14 +159,13 @@ export const useSheetsStore = defineStore('sheets', () => {
         })
       })
 
-      // 6. Сортируем СТРОГО по алфавиту
       heroesLocal.sort((a, b) => a.name.localeCompare(b.name))
 
       rolesMap.value = rolesMapLocal
       heroesList.value = heroesLocal
 
       console.log(
-        `✅ Успешно загружено ${heroesLocal.length} героев. Ролей назначено: ${rolesMapLocal.size}`
+        `Успешно загружено ${heroesLocal.length} героев и ${teamUps.value.length} тимапов.`
       )
     } catch (e: unknown) {
       if (e instanceof Error) {
@@ -177,6 +187,7 @@ export const useSheetsStore = defineStore('sheets', () => {
     classData,
     rolesMap,
     heroesList,
+    teamUps,
     isLoading,
     error,
     loadData,

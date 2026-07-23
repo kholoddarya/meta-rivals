@@ -177,12 +177,3 @@ export default defineEventHandler(async (event) => {
 
   return result
 })
-
-// if (result.success && result.teams) {
-//   console.log(result.teams)
-//   result.teams = result.teams.filter((team) => {
-//     return VALID_COMPOSITIONS.includes(team.finalComposition)
-//   })
-//   result.groups =
-//     result.groups?.filter((group) => VALID_COMPOSITIONS.includes(group.baseComposition)) || []
-// }

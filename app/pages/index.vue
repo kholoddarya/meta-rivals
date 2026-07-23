@@ -99,11 +99,33 @@ const features = [
 </script>
 
 <template>
-  <div class="bg-white dark:bg-gray-950">
+  <div class="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-300">
+    <header
+      class="sticky top-0 z-50 w-full border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md"
+    >
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <!-- Логотип / Бренд -->
+        <NuxtLink to="/" class="flex items-center gap-2.5 group">
+          <div
+            class="size-9 rounded-xl bg-primary-500/10 dark:bg-primary-500/20 flex items-center justify-center transition-colors group-hover:bg-primary-500/20 dark:group-hover:bg-primary-500/30"
+          >
+            <UIcon name="i-lucide-shield" class="size-5 text-primary-600 dark:text-primary-400" />
+          </div>
+          <span
+            class="font-bold text-lg text-gray-900 dark:text-white tracking-tight group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors"
+          >
+            MetaRivals
+          </span>
+        </NuxtLink>
+
+        <ThemeToggle />
+      </div>
+    </header>
+
     <!-- Hero -->
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20 text-center">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-20 text-center">
       <div
-        class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 mb-5"
+        class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 mb-5 bg-primary-50 dark:bg-primary-950/30 px-3 py-1 rounded-full border border-primary-100 dark:border-primary-900"
       >
         <UIcon name="i-lucide-sparkles" class="size-3.5" />
         Marvel Rivals Team Builder
@@ -144,7 +166,6 @@ const features = [
         >
           How it works
         </h2>
-
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-8">
           <div v-for="step in steps" :key="step.title" class="text-center">
             <div
@@ -176,7 +197,7 @@ const features = [
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <NuxtLink v-for="tool in tools" :key="tool.name" :to="tool.path" class="group">
             <UCard
-              class="h-full transition-all hover:shadow-md hover:-translate-y-0.5"
+              class="h-full transition-all hover:shadow-md hover:-translate-y-0.5 dark:bg-gray-900 dark:border-gray-800"
               :ui="{ body: 'flex items-start gap-4' }"
             >
               <UIcon

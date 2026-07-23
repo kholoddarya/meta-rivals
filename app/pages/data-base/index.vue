@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { h, onMounted, computed } from 'vue'
+import { h, onMounted, computed, ref } from 'vue'
 import type { AccordionItem, TableColumn } from '@nuxt/ui'
 import { useSheetsStore } from '~/stores/sheets'
+import { UPopover } from '#components'
 
 const store = useSheetsStore()
+const teamUpSearch = ref('')
 
 onMounted(() => {
   store.loadData()
 })
 
-// camelCase / snake_case / "Pipe | Case" -> "Readable Title"
 function formatColumnName(key: string) {
   return key
     .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -19,18 +20,17 @@ function formatColumnName(key: string) {
     .replace(/^./, (c) => c.toUpperCase())
 }
 
-// 🎯 Компактная легенда для минимального занимаемого места
 const tierLegend = [
   {
-    key: 'S',
-    label: 'Meta',
+    key: 'SA',
+    label: 'Top with anchor',
     bg: 'bg-purple-100 dark:bg-purple-900/30',
     text: 'text-purple-700 dark:text-purple-300',
     border: 'border-purple-200 dark:border-purple-800',
   },
   {
-    key: 'SA',
-    label: 'Top with anchor',
+    key: 'S',
+    label: 'Meta',
     bg: 'bg-blue-100 dark:bg-blue-900/30',
     text: 'text-blue-700 dark:text-blue-300',
     border: 'border-blue-200 dark:border-blue-800',
@@ -65,7 +65,6 @@ const tierLegend = [
   },
 ]
 
-// Карта цветов для ячеек таблицы
 const tierColors: Record<string, string> = {
   SA: 'text-purple-600 dark:text-purple-400 font-bold',
   S: 'text-blue-600 dark:text-blue-400 font-semibold',
@@ -77,35 +76,37 @@ const tierColors: Record<string, string> = {
   '': 'text-gray-400 dark:text-gray-500',
 }
 
+function getTierStyle(grade: string) {
+  return (
+    tierLegend.find((t) => t.key === grade) || {
+      bg: 'bg-gray-100 dark:bg-gray-800',
+      text: 'text-gray-500 dark:text-gray-400',
+      border: 'border-gray-200 dark:border-gray-700',
+    }
+  )
+}
+
 function buildColumns(data: Record<string, any>[]): TableColumn<Record<string, any>>[] {
   if (!data.length) return []
-
   return Object.keys(data[0]).map((key, index) => {
     const isNameColumn = index === 0
-
     const column: TableColumn<Record<string, any>> = {
       accessorKey: key,
       header: formatColumnName(key),
       size: isNameColumn ? 180 : 120,
       meta: {
-        class: {
-          td: isNameColumn ? 'font-medium text-gray-900 dark:text-white' : undefined,
-        },
+        class: { td: isNameColumn ? 'font-medium text-gray-900 dark:text-white' : undefined },
       },
     }
-
     column.cell = ({ row }: any) => {
       const value = row.getValue(key)
       const strValue = String(value ?? '').trim()
       const upperValue = strValue.toUpperCase()
-
       const colorClass = isNameColumn
         ? ''
         : tierColors[upperValue] || 'text-gray-700 dark:text-gray-300'
-
       return h('span', { class: colorClass }, strValue || '—')
     }
-
     return column
   })
 }
@@ -123,7 +124,140 @@ const fullInfoPinning = computed(() => pinFirstColumn(fullInfoColumns.value))
 const heroTierPinning = computed(() => pinFirstColumn(heroTierColumns.value))
 const classPinning = computed(() => pinFirstColumn(classColumns.value))
 
+const filteredTeamUps = computed(() => {
+  if (!teamUpSearch.value) return store.teamUps
+  const q = teamUpSearch.value.toLowerCase()
+  return store.teamUps.filter(
+    (item) => item.heroA.toLowerCase().includes(q) || item.heroB.toLowerCase().includes(q)
+  )
+})
+
+const teamUpColumns: TableColumn<any>[] = [
+  {
+    accessorKey: 'heroA',
+    header: 'Hero A',
+    size: 150,
+    cell: ({ row }: any) =>
+      h('span', { class: 'font-medium text-gray-900 dark:text-white' }, row.getValue('heroA')),
+  },
+  {
+    accessorKey: 'roleA',
+    header: 'Role',
+    size: 70,
+    cell: ({ row }: any) =>
+      h(
+        'span',
+        { class: 'text-xs uppercase text-gray-500 dark:text-gray-400 font-semibold' },
+        row.getValue('roleA')
+      ),
+  },
+  {
+    accessorKey: 'tierA',
+    header: 'Tier',
+    size: 60,
+    cell: ({ row }: any) => {
+      const tier = String(row.getValue('tierA')).toUpperCase()
+      return h('span', { class: tierColors[tier] || 'text-gray-500' }, tier)
+    },
+  },
+  {
+    accessorKey: 'heroB',
+    header: 'Hero B',
+    size: 150,
+    cell: ({ row }: any) =>
+      h('span', { class: 'font-medium text-gray-900 dark:text-white' }, row.getValue('heroB')),
+  },
+  {
+    accessorKey: 'roleB',
+    header: 'Role',
+    size: 70,
+    cell: ({ row }: any) =>
+      h(
+        'span',
+        { class: 'text-xs uppercase text-gray-500 dark:text-gray-400 font-semibold' },
+        row.getValue('roleB')
+      ),
+  },
+  {
+    accessorKey: 'tierB',
+    header: 'Tier',
+    size: 60,
+    cell: ({ row }: any) => {
+      const tier = String(row.getValue('tierB')).toUpperCase()
+      return h('span', { class: tierColors[tier] || 'text-gray-500' }, tier)
+    },
+  },
+  {
+    accessorKey: 'grade',
+    header: 'Grade',
+    size: 90,
+    cell: ({ row }: any) => {
+      const item = row.original
+      // Получаем значение максимально надежно, защищаясь от undefined/null
+      const grade = String(item.grade ?? row.getValue('grade') ?? '')
+        .toUpperCase()
+        .trim()
+
+      if (!grade) {
+        return h('span', { class: 'text-gray-400 text-xs' }, '—')
+      }
+
+      const style = getTierStyle(grade)
+
+      return h('div', { class: 'relative inline-block' }, [
+        h(
+          UPopover,
+          { mode: 'hover' },
+          {
+            default: () =>
+              h(
+                'span',
+                {
+                  class: `inline-flex items-center justify-center w-8 h-6 rounded border font-bold text-xs cursor-help transition-colors ${style.bg} ${style.text} ${style.border}`,
+                },
+                grade
+              ),
+            content: () =>
+              h('div', { class: 'p-3 w-72 space-y-2' }, [
+                h('div', { class: 'flex items-center justify-between' }, [
+                  h(
+                    'h4',
+                    { class: 'font-semibold text-sm text-gray-900 dark:text-white' },
+                    `${item.heroA} + ${item.heroB}`
+                  ),
+                ]),
+                h(
+                  'p',
+                  { class: 'text-xs text-gray-600 dark:text-gray-300 leading-relaxed' },
+                  `Synergy: ${item.synergyScore} | Tier: ${item.tierScore} | Role: ${item.roleScore}`
+                ),
+                h('div', { class: 'flex flex-wrap gap-1.5 pt-1' }, [
+                  h(
+                    'span',
+                    {
+                      class:
+                        'text-[10px] px-2 py-0.5 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 rounded-full border border-primary-100 dark:border-primary-800',
+                    },
+                    `Total Score: ${item.totalScore}`
+                  ),
+                ]),
+              ]),
+          }
+        ),
+      ])
+    },
+  },
+  {
+    accessorKey: 'totalScore',
+    header: 'Total',
+    size: 70,
+    cell: ({ row }: any) =>
+      h('span', { class: 'font-bold text-gray-900 dark:text-white' }, row.getValue('totalScore')),
+  },
+]
+// 🎯 Вкладка Team-Ups перемещена на второе место (индекс 1)
 const items = computed<AccordionItem[]>(() => [
+  { label: 'All Team-Ups', icon: 'i-lucide-flame', value: 'teamUps', slot: 'teamUps' as const },
   { label: 'Full Info', icon: 'i-lucide-table-2', value: 'fullInfo', slot: 'fullInfo' as const },
   {
     label: 'Hero Tier List',
@@ -136,55 +270,49 @@ const items = computed<AccordionItem[]>(() => [
 </script>
 
 <template>
-  <div class="mx-20 px-4 sm:px-6 lg:px-8 py-10">
-    <!-- 🔙 Кнопка возврата на главную -->
-    <NuxtLink
-      to="/"
-      class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors mb-4 group"
-    >
-      <UIcon
-        name="i-lucide-arrow-left"
-        class="size-4 transition-transform group-hover:-translate-x-1"
-      />
-      Back to Home
-    </NuxtLink>
+  <div class="mx-4 sm:mx-10 lg:mx-20 px-4 sm:px-6 lg:px-8 py-10">
+    <div class="flex justify-between items-center mb-6">
+      <NuxtLink
+        to="/"
+        class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group w-fit"
+      >
+        <UIcon
+          name="i-lucide-arrow-left"
+          class="size-4 transition-transform group-hover:-translate-x-1"
+        />
+        Back to Home
+      </NuxtLink>
+      <ThemeToggle />
+    </div>
 
     <header class="mb-6">
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Meta Rivals: Database</h1>
     </header>
 
-    <!-- 🎯 Компактная легенда (занимает минимум места) -->
     <div class="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-      <span class="text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">
-        Tiers:
-      </span>
-
+      <span class="text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider"
+        >Tiers:</span
+      >
       <template v-for="tier in tierLegend" :key="tier.key">
         <div class="flex items-center gap-1.5">
-          <!-- Цветной бейдж с буквой -->
           <span
             class="inline-flex items-center justify-center w-6 h-5 rounded border font-bold text-[10px] leading-none"
             :class="[tier.bg, tier.text, tier.border]"
           >
             {{ tier.key }}
           </span>
-          <!-- Краткое описание -->
           <span class="text-gray-600 dark:text-gray-400">{{ tier.label }}</span>
         </div>
       </template>
-
-      <!-- Бейдж для N/A -->
       <div class="flex items-center gap-1.5">
         <span
           class="inline-flex items-center justify-center w-8 h-5 rounded border font-medium text-[10px] leading-none bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700"
+          >N/A</span
         >
-          N/A
-        </span>
         <span class="text-gray-600 dark:text-gray-400">None</span>
       </div>
     </div>
 
-    <!-- Loading -->
     <div
       v-if="store.isLoading"
       class="flex flex-col items-center justify-center py-20 text-gray-500 dark:text-gray-400"
@@ -193,7 +321,6 @@ const items = computed<AccordionItem[]>(() => [
       <p>Loading data from sheets...</p>
     </div>
 
-    <!-- Error -->
     <UAlert
       v-else-if="store.error"
       color="error"
@@ -202,20 +329,51 @@ const items = computed<AccordionItem[]>(() => [
       icon="i-lucide-alert-triangle"
     >
       <template #actions>
-        <UButton color="error" variant="outline" size="xs" @click="store.loadData()">
-          Retry
-        </UButton>
+        <UButton color="error" variant="outline" size="xs" @click="store.loadData()">Retry</UButton>
       </template>
     </UAlert>
 
-    <!-- Content -->
     <UAccordion
       v-else
       type="multiple"
       :items="items"
-      :default-value="['fullInfo']"
+      :default-value="['teamUps']"
       :unmount-on-hide="false"
     >
+      <template #teamUps>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Hover over the
+              <span class="font-semibold text-gray-700 dark:text-gray-300">Grade</span> badge to see
+              synergy details.
+            </p>
+            <UInput
+              v-model="teamUpSearch"
+              icon="i-lucide-search"
+              placeholder="Search hero..."
+              class="w-64"
+              size="sm"
+            />
+          </div>
+
+          <UTable
+            :data="filteredTeamUps"
+            :columns="teamUpColumns"
+            sticky
+            class="max-h-[600px]"
+            :ui="{ td: 'py-3' }"
+          />
+
+          <p
+            v-if="!filteredTeamUps || filteredTeamUps.length === 0"
+            class="text-center py-10 text-gray-500 dark:text-gray-400 text-sm"
+          >
+            No team-ups match your search.
+          </p>
+        </div>
+      </template>
+
       <template #fullInfo>
         <UTable
           :data="store.fullInfo"

@@ -1,5 +1,5 @@
 import type { RoleType } from '~/types/sheets'
-import { getTeamupDescription } from '../../utils/teamupDescriptions'
+import { TEAM_UPS } from '../../utils/teamupDescriptions'
 
 interface TeamUpInfo {
   partner: string
@@ -103,6 +103,15 @@ export default defineEventHandler(
       return cell.trim().toUpperCase()
     }
 
+    const getTeamupDescription = (h1: string, h2: string) => {
+      const name1 = h1.trim().toUpperCase()
+      const name2 = h2.trim().toUpperCase()
+      const sorted = [name1, name2].sort()
+      const key = `${sorted[0]}|${sorted[1]}`
+
+      return TEAM_UPS[key] || null
+    }
+
     const teamups: TeamUpInfo[] = []
 
     for (let i = 0; i < rowHeaders.length; i++) {
@@ -125,8 +134,7 @@ export default defineEventHandler(
       }
       const synergyScore = gradeScores[grade] ?? 0
 
-      // Получаем описание тимапа
-      const description = getTeamupDescription(heroName, partner)
+      const descData = getTeamupDescription(heroName, partner)
 
       teamups.push({
         partner,
@@ -134,17 +142,27 @@ export default defineEventHandler(
         tier,
         grade,
         synergyScore,
-        description: description
-          ? {
-              title: description.title,
-              text: description.description,
-              bonuses: description.bonuses,
-            }
-          : null,
+        // Маппим данные только если тимап подтвержден (confirmed: true) и существует
+        description:
+          descData && descData.confirmed && descData.title && descData.description
+            ? {
+                title: descData.title,
+                text: descData.description,
+                bonuses: descData.bonuses || [],
+              }
+            : null,
       })
     }
 
-    teamups.sort((a, b) => b.synergyScore - a.synergyScore)
+    teamups.sort((a, b) => {
+      if (b.synergyScore !== a.synergyScore) {
+        return b.synergyScore - a.synergyScore
+      }
+      // Если очки равны, приоритет у тех, у кого есть подтвержденное описание
+      const aHasDesc = a.description ? 1 : 0
+      const bHasDesc = b.description ? 1 : 0
+      return bHasDesc - aHasDesc
+    })
 
     return { teamups, hero: heroName }
   }

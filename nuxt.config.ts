@@ -11,6 +11,20 @@ export default defineNuxtConfig({
     '@nuxtjs/i18n',
   ],
 
+  colorMode: {
+    preference: 'system',
+    fallback: 'light',
+    classPrefix: '',
+  },
+
+  app: {
+    head: {
+      htmlAttrs: {
+        class: 'transition-colors duration-300',
+      },
+    },
+  },
+
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {

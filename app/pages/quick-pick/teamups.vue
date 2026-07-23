@@ -14,8 +14,9 @@ interface TeamUpInfo {
   } | null
 }
 
-// Исправлено: убраны фигурные скобки
 const sheetsStore = useSheetsStore()
+
+// Храним именно строку (имя героя)
 const selectedHero = ref<string>('')
 const teamups = ref<TeamUpInfo[]>([])
 const isLoading = ref(false)
@@ -46,13 +47,24 @@ const heroOptions = computed(() => {
   }))
 })
 
-const loadTeamups = async (heroName: string) => {
+const handleHeroSelect = (val: any) => {
+  // Безопасно извлекаем строку имени, что бы ни пришло (строка или объект)
+  const heroName = typeof val === 'string' ? val : val?.value || val?.name || val?.label || ''
+
+  // Принудительно сохраняем как строку, чтобы UInputMenu не сходил с ума
+  selectedHero.value = heroName
+
   if (!heroName) {
     teamups.value = []
     heroData.value = null
+    expandedTeamup.value = null
     return
   }
 
+  loadTeamups(heroName)
+}
+
+const loadTeamups = async (heroName: string) => {
   isLoading.value = true
   error.value = null
 
@@ -60,9 +72,10 @@ const loadTeamups = async (heroName: string) => {
     const res = await $fetch<{ teamups: TeamUpInfo[]; hero: string }>(
       `/api/teamups/${encodeURIComponent(heroName)}`
     )
+
     teamups.value = res.teamups
 
-    const heroInfo = sheetsStore.heroesList.find((h) => h.name === res.hero)
+    const heroInfo = sheetsStore.heroesList?.find((h) => h.name === res.hero)
     heroData.value = heroInfo || { name: res.hero, role: null, tier: null }
 
     if (res.teamups.length > 0) {
@@ -77,28 +90,17 @@ const loadTeamups = async (heroName: string) => {
   }
 }
 
-const heroInitial = (name: string) => {
-  return name.trim().charAt(0).toUpperCase()
-}
-
-const getHeroIconUrl = (heroName: string): string => {
-  const sanitizedName = heroName.toLowerCase().replace(/[^a-z0-9]/g, '-')
-  return `https://marvelrivals.gg/static/images/heroes/${sanitizedName}.png`
-  // Примечание: URL иконок зависит от структуры marvelrivals.gg. Если не грузится, верните фоллбэк на fandom wiki.
+const heroInitial = (name: unknown) => {
+  const str = typeof name === 'string' ? name : ''
+  return str ? str.trim().charAt(0).toUpperCase() : '?'
 }
 
 const toggleExpand = (partner: string) => {
   expandedTeamup.value = expandedTeamup.value === partner ? null : partner
 }
 
-watch(selectedHero, (newVal) => {
-  if (newVal) {
-    loadTeamups(newVal)
-  }
-})
-
 onMounted(() => {
-  if (sheetsStore.heroesList.length === 0 && !sheetsStore.isLoading) {
+  if (!sheetsStore.heroesList?.length && !sheetsStore.isLoading) {
     sheetsStore.loadData()
   }
 })
@@ -106,9 +108,22 @@ onMounted(() => {
 
 <template>
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="flex justify-between">
+      <NuxtLink
+        to="/"
+        class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group w-fit"
+      >
+        <UIcon
+          name="i-lucide-arrow-left"
+          class="size-4 transition-transform group-hover:-translate-x-1"
+        />
+        Back to Home
+      </NuxtLink>
+      <ThemeToggle />
+    </div>
     <header class="mb-8 text-center">
       <div
-        class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 mb-3"
+        class="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 dark:text-primary-400 mb-3"
       >
         <UIcon name="i-lucide-users" class="size-3.5" />
         Synergy Database
@@ -124,16 +139,19 @@ onMounted(() => {
       <UInputMenu
         v-model="selectedHero"
         :items="heroOptions"
+        value-attribute="value"
+        option-attribute="label"
         placeholder="Search and select a hero..."
         :searchable="true"
         :clearable="true"
         class="w-full"
         :loading="sheetsStore.isLoading"
+        @update:model-value="handleHeroSelect"
       >
         <template #label>
           <div v-if="selectedHero" class="flex items-center gap-2">
             <div
-              class="size-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold"
+              class="size-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-sm font-bold"
             >
               {{ heroInitial(selectedHero) }}
             </div>
@@ -149,7 +167,7 @@ onMounted(() => {
             </div>
             <div class="flex-1">
               <div class="text-sm font-medium">{{ item.label }}</div>
-              <div v-if="item.role" class="text-xs text-gray-500 dark:text-gray-400">
+              <div v-if="item.role" class="text-sm text-gray-500 dark:text-gray-400">
                 {{ roleLabels[item.role] }}
               </div>
             </div>
@@ -187,12 +205,6 @@ onMounted(() => {
             <div
               class="size-20 rounded-2xl bg-white dark:bg-gray-800 shadow-lg flex items-center justify-center overflow-hidden"
             >
-              <img
-                :src="getHeroIconUrl(heroData.name)"
-                :alt="heroData.name"
-                class="size-full object-cover"
-                @error="$el.style.display = 'none'"
-              />
               <span class="text-3xl font-bold text-gray-700 dark:text-gray-200">
                 {{ heroInitial(heroData.name) }}
               </span>
@@ -248,12 +260,6 @@ onMounted(() => {
               <div
                 class="size-14 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden"
               >
-                <img
-                  :src="getHeroIconUrl(teamup.partner)"
-                  :alt="teamup.partner"
-                  class="size-full object-cover"
-                  @error="$el.style.display = 'none'"
-                />
                 <span class="text-lg font-bold text-gray-700 dark:text-gray-200">
                   {{ heroInitial(teamup.partner) }}
                 </span>
@@ -276,16 +282,16 @@ onMounted(() => {
               </h3>
               <div class="flex items-center gap-2 mt-1">
                 <span
-                  :class="`text-xs font-bold px-2 py-0.5 rounded ${gradeStyles[teamup.grade]?.class || 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}`"
+                  :class="`text-sm font-bold px-2 py-0.5 rounded ${gradeStyles[teamup.grade]?.class || 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}`"
                 >
                   {{ gradeStyles[teamup.grade]?.label || teamup.grade }}
                 </span>
-                <span v-if="teamup.tier" class="text-xs text-gray-500 dark:text-gray-400">
+                <span v-if="teamup.tier" class="text-sm text-gray-500 dark:text-gray-400">
                   Tier {{ teamup.tier }}
                 </span>
                 <span
                   v-if="teamup.description"
-                  class="text-xs text-primary-600 dark:text-primary-400 font-medium"
+                  class="text-sm text-primary-600 dark:text-primary-400 font-medium"
                 >
                   • {{ teamup.description.title }}
                 </span>
@@ -298,7 +304,7 @@ onMounted(() => {
                 <div class="text-2xl font-bold text-gray-900 dark:text-white">
                   {{ teamup.synergyScore }}
                 </div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">points</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">points</div>
               </div>
               <UIcon
                 name="i-lucide-chevron-down"
@@ -313,10 +319,10 @@ onMounted(() => {
             v-if="teamup.description && expandedTeamup === teamup.partner"
             class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
           >
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            <h4 class="text-md font-semibold text-gray-900 dark:text-white mb-2">
               {{ teamup.description.title }}
             </h4>
-            <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">
+            <p class="text-md text-gray-600 dark:text-gray-300 mb-3">
               {{ teamup.description.text }}
             </p>
             <div v-if="teamup.description.bonuses?.length" class="flex flex-wrap gap-2">
@@ -325,7 +331,7 @@ onMounted(() => {
                 :key="idx"
                 color="primary"
                 variant="subtle"
-                size="xs"
+                size="sm"
               >
                 {{ bonus }}
               </UBadge>
@@ -345,9 +351,18 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Empty State -->
+    <!-- Preparing hero data (переходное состояние) -->
     <div
-      v-else-if="selectedHero && !isLoading"
+      v-else-if="selectedHero && !heroData"
+      class="text-center py-20 text-gray-500 dark:text-gray-400"
+    >
+      <UIcon name="i-lucide-loader-2" class="animate-spin size-8 mx-auto mb-4" />
+      <p>Preparing hero data...</p>
+    </div>
+
+    <!-- Empty State: герой выбран, данные пришли, но тимапов нет -->
+    <div
+      v-else-if="selectedHero && heroData && teamups.length === 0"
       class="text-center py-20 text-gray-500 dark:text-gray-400"
     >
       <UIcon name="i-lucide-user-x" class="size-12 mx-auto mb-4 opacity-50" />
