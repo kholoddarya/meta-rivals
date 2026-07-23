@@ -35,6 +35,12 @@ export default defineNuxtConfig({
 
   app: {
     head: {
+      meta: [
+        {
+          name: 'coinzilla',
+          content: '13fada878dd4db058be3efb2b58bb90a',
+        },
+      ],
       script: [
         { src: 'https://yandex.ru/ads/system/context.js', async: true },
         {
