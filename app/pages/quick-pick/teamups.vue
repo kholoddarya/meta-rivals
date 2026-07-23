@@ -1,22 +1,18 @@
 <script setup lang="ts">
 import type { RoleType } from '~/types/sheets'
 
+const { t } = useI18n()
+
 interface TeamUpInfo {
   partner: string
   role: RoleType | null
   tier: string | null
   grade: string
   synergyScore: number
-  description: {
-    title: string
-    text: string
-    bonuses: string[]
-  } | null
+  description: { title: string; text: string; bonuses: string[] } | null
 }
 
 const sheetsStore = useSheetsStore()
-
-// Храним именно строку (имя героя)
 const selectedHero = ref<string>('')
 const teamups = ref<TeamUpInfo[]>([])
 const isLoading = ref(false)
@@ -35,54 +31,43 @@ const gradeStyles: Record<string, { label: string; class: string }> = {
   C: { label: 'C', class: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
 }
 
-const roleLabels: Record<RoleType, string> = { sup: 'Support', dps: 'Damage', tnk: 'Tank' }
+const roleLabels = computed<Record<RoleType, string>>(() => ({
+  sup: t('common.role_support'),
+  dps: t('common.role_damage'),
+  tnk: t('common.role_tank'),
+}))
 const roleColors: Record<RoleType, string> = { sup: 'success', dps: 'error', tnk: 'info' }
 
 const heroOptions = computed(() => {
   if (!sheetsStore?.heroesList?.length) return []
-  return sheetsStore.heroesList.map((h) => ({
-    value: h.name,
-    label: h.name,
-    role: h.role,
-  }))
+  return sheetsStore.heroesList.map((h) => ({ value: h.name, label: h.name, role: h.role }))
 })
 
 const handleHeroSelect = (val: any) => {
-  // Безопасно извлекаем строку имени, что бы ни пришло (строка или объект)
   const heroName = typeof val === 'string' ? val : val?.value || val?.name || val?.label || ''
-
-  // Принудительно сохраняем как строку, чтобы UInputMenu не сходил с ума
   selectedHero.value = heroName
-
   if (!heroName) {
     teamups.value = []
     heroData.value = null
     expandedTeamup.value = null
     return
   }
-
   loadTeamups(heroName)
 }
 
 const loadTeamups = async (heroName: string) => {
   isLoading.value = true
   error.value = null
-
   try {
     const res = await $fetch<{ teamups: TeamUpInfo[]; hero: string }>(
       `/api/teamups/${encodeURIComponent(heroName)}`
     )
-
     teamups.value = res.teamups
-
     const heroInfo = sheetsStore.heroesList?.find((h) => h.name === res.hero)
     heroData.value = heroInfo || { name: res.hero, role: null, tier: null }
-
-    if (res.teamups.length > 0) {
-      expandedTeamup.value = res.teamups[0].partner
-    }
+    if (res.teamups.length > 0) expandedTeamup.value = res.teamups[0].partner
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to load team-ups'
+    error.value = e instanceof Error ? e.message : t('teamups.error_load')
     teamups.value = []
     heroData.value = null
   } finally {
@@ -100,48 +85,31 @@ const toggleExpand = (partner: string) => {
 }
 
 onMounted(() => {
-  if (!sheetsStore.heroesList?.length && !sheetsStore.isLoading) {
-    sheetsStore.loadData()
-  }
+  if (!sheetsStore.heroesList?.length && !sheetsStore.isLoading) sheetsStore.loadData()
 })
 </script>
 
 <template>
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <div class="flex justify-between">
-      <NuxtLink
-        to="/"
-        class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group w-fit"
-      >
-        <UIcon
-          name="i-lucide-arrow-left"
-          class="size-4 transition-transform group-hover:-translate-x-1"
-        />
-        Back to Home
-      </NuxtLink>
-      <ThemeToggle />
-    </div>
     <header class="mb-8 text-center">
       <div
         class="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 dark:text-primary-400 mb-3"
       >
-        <UIcon name="i-lucide-users" class="size-3.5" />
-        Synergy Database
+        <UIcon name="i-lucide-users" class="size-3.5" /> {{ $t('teamups.badge') }}
       </div>
-      <h1 class="text-3xl font-semibold text-gray-900 dark:text-white mb-2">Hero Team-Ups</h1>
-      <p class="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
-        Select a hero to discover their best synergies and team-up potential with other characters.
-      </p>
+      <h1 class="text-3xl font-semibold text-gray-900 dark:text-white mb-2">
+        {{ $t('teamups.title') }}
+      </h1>
+      <p class="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">{{ $t('teamups.subtitle') }}</p>
     </header>
 
-    <!-- Hero Selector -->
     <div class="max-w-md mx-auto mb-10">
       <UInputMenu
         v-model="selectedHero"
         :items="heroOptions"
         value-attribute="value"
         option-attribute="label"
-        placeholder="Search and select a hero..."
+        :placeholder="$t('teamups.search_placeholder')"
         :searchable="true"
         :clearable="true"
         class="w-full"
@@ -176,16 +144,13 @@ onMounted(() => {
       </UInputMenu>
     </div>
 
-    <!-- Loading State -->
     <div
       v-if="isLoading"
       class="flex flex-col items-center justify-center py-20 text-gray-500 dark:text-gray-400"
     >
       <UIcon name="i-lucide-loader-2" class="animate-spin size-8 mb-4" />
-      <p>Loading team-ups...</p>
+      <p>{{ $t('teamups.loading') }}</p>
     </div>
-
-    <!-- Error State -->
     <UAlert
       v-else-if="error"
       color="error"
@@ -194,9 +159,7 @@ onMounted(() => {
       icon="i-lucide-alert-triangle"
     />
 
-    <!-- Selected Hero & Team-ups -->
     <div v-else-if="heroData && teamups.length > 0" class="space-y-6">
-      <!-- Hero Header -->
       <UCard
         class="bg-gradient-to-br from-primary-50 to-white dark:from-primary-950/20 dark:to-gray-900"
       >
@@ -205,9 +168,9 @@ onMounted(() => {
             <div
               class="size-20 rounded-2xl bg-white dark:bg-gray-800 shadow-lg flex items-center justify-center overflow-hidden"
             >
-              <span class="text-3xl font-bold text-gray-700 dark:text-gray-200">
-                {{ heroInitial(heroData.name) }}
-              </span>
+              <span class="text-3xl font-bold text-gray-700 dark:text-gray-200">{{
+                heroInitial(heroData.name)
+              }}</span>
             </div>
             <UBadge
               v-if="heroData.role"
@@ -215,23 +178,21 @@ onMounted(() => {
               variant="solid"
               size="sm"
               class="absolute -bottom-1 -right-1"
+              >{{ roleLabels[heroData.role] }}</UBadge
             >
-              {{ roleLabels[heroData.role] }}
-            </UBadge>
           </div>
           <div class="flex-1">
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">
               {{ heroData.name }}
             </h2>
             <div class="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-              <span>{{ teamups.length }} team-ups found</span>
-              <span v-if="heroData.tier">• Tier {{ heroData.tier }}</span>
+              <span>{{ teamups.length }} {{ $t('teamups.found') }}</span>
+              <span v-if="heroData.tier">• {{ $t('teamups.tier', { tier: heroData.tier }) }}</span>
             </div>
           </div>
         </div>
       </UCard>
 
-      <!-- Team-ups List -->
       <div class="space-y-3">
         <UCard
           v-for="(teamup, index) in teamups"
@@ -246,7 +207,6 @@ onMounted(() => {
           @click="toggleExpand(teamup.partner)"
         >
           <div class="flex items-center gap-4">
-            <!-- Rank Badge -->
             <div v-if="index < 3" class="shrink-0">
               <div
                 class="size-8 rounded-full bg-primary-500 text-white flex items-center justify-center text-sm font-bold"
@@ -254,15 +214,13 @@ onMounted(() => {
                 {{ index + 1 }}
               </div>
             </div>
-
-            <!-- Partner Hero -->
             <div class="relative shrink-0">
               <div
                 class="size-14 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden"
               >
-                <span class="text-lg font-bold text-gray-700 dark:text-gray-200">
-                  {{ heroInitial(teamup.partner) }}
-                </span>
+                <span class="text-lg font-bold text-gray-700 dark:text-gray-200">{{
+                  heroInitial(teamup.partner)
+                }}</span>
               </div>
               <UBadge
                 v-if="teamup.role"
@@ -270,12 +228,9 @@ onMounted(() => {
                 variant="subtle"
                 size="xs"
                 class="absolute -bottom-1 -right-1"
+                >{{ roleLabels[teamup.role] }}</UBadge
               >
-                {{ roleLabels[teamup.role] }}
-              </UBadge>
             </div>
-
-            <!-- Info -->
             <div class="flex-1 min-w-0">
               <h3 class="font-semibold text-gray-900 dark:text-white truncate">
                 {{ teamup.partner }}
@@ -283,28 +238,26 @@ onMounted(() => {
               <div class="flex items-center gap-2 mt-1">
                 <span
                   :class="`text-sm font-bold px-2 py-0.5 rounded ${gradeStyles[teamup.grade]?.class || 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}`"
+                  >{{ gradeStyles[teamup.grade]?.label || teamup.grade }}</span
                 >
-                  {{ gradeStyles[teamup.grade]?.label || teamup.grade }}
-                </span>
-                <span v-if="teamup.tier" class="text-sm text-gray-500 dark:text-gray-400">
-                  Tier {{ teamup.tier }}
-                </span>
+                <span v-if="teamup.tier" class="text-sm text-gray-500 dark:text-gray-400">{{
+                  $t('teamups.tier', { tier: teamup.tier })
+                }}</span>
                 <span
                   v-if="teamup.description"
                   class="text-sm text-primary-600 dark:text-primary-400 font-medium"
+                  >• {{ teamup.description.title }}</span
                 >
-                  • {{ teamup.description.title }}
-                </span>
               </div>
             </div>
-
-            <!-- Score & Expand Icon -->
             <div class="flex items-center gap-3 shrink-0">
               <div class="text-right">
                 <div class="text-2xl font-bold text-gray-900 dark:text-white">
                   {{ teamup.synergyScore }}
                 </div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">points</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                  {{ $t('common.points') }}
+                </div>
               </div>
               <UIcon
                 name="i-lucide-chevron-down"
@@ -313,8 +266,6 @@ onMounted(() => {
               />
             </div>
           </div>
-
-          <!-- Expanded Description -->
           <div
             v-if="teamup.description && expandedTeamup === teamup.partner"
             class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
@@ -332,42 +283,36 @@ onMounted(() => {
                 color="primary"
                 variant="subtle"
                 size="sm"
+                >{{ bonus }}</UBadge
               >
-                {{ bonus }}
-              </UBadge>
             </div>
           </div>
-
-          <!-- No Description Placeholder -->
           <div
             v-else-if="expandedTeamup === teamup.partner && !teamup.description"
             class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
           >
             <p class="text-sm text-gray-500 dark:text-gray-400 italic">
-              Description not available yet. Check back later for updates!
+              {{ $t('teamups.no_desc') }}
             </p>
           </div>
         </UCard>
       </div>
     </div>
 
-    <!-- Preparing hero data (переходное состояние) -->
     <div
       v-else-if="selectedHero && !heroData"
       class="text-center py-20 text-gray-500 dark:text-gray-400"
     >
       <UIcon name="i-lucide-loader-2" class="animate-spin size-8 mx-auto mb-4" />
-      <p>Preparing hero data...</p>
+      <p>{{ $t('teamups.preparing') }}</p>
     </div>
-
-    <!-- Empty State: герой выбран, данные пришли, но тимапов нет -->
     <div
       v-else-if="selectedHero && heroData && teamups.length === 0"
       class="text-center py-20 text-gray-500 dark:text-gray-400"
     >
       <UIcon name="i-lucide-user-x" class="size-12 mx-auto mb-4 opacity-50" />
-      <p class="text-lg font-medium">No team-ups found for {{ selectedHero }}</p>
-      <p class="text-sm mt-1">This hero might not have recorded synergies yet.</p>
+      <p class="text-lg font-medium">{{ $t('teamups.no_teamups_hero', { hero: selectedHero }) }}</p>
+      <p class="text-sm mt-1">{{ $t('teamups.no_synergies_yet') }}</p>
     </div>
   </div>
 </template>

@@ -1,150 +1,129 @@
 <script setup lang="ts">
+const { t } = useI18n()
+
 const tools = [
   {
-    name: 'Quick Pick',
+    name: t('home.tools.quick_pick'),
     path: '/quick-pick',
     icon: 'i-lucide-zap',
     color: 'primary',
-    description:
-      'Fast team builder with smart recommendations based on synergies, tiers, and counter-picks.',
+    description: t('home.tools.quick_pick_desc'),
   },
   {
-    name: 'Duo (2v2)',
+    name: t('home.tools.duo'),
     path: '/quick-pick/duo',
     icon: 'i-lucide-users',
     color: 'info',
-    description: 'Build powerful duos focusing on hero bonds and synergies between pairs.',
+    description: t('home.tools.duo_desc'),
   },
   {
-    name: 'Trio (3v3)',
+    name: t('home.tools.trio'),
     path: '/quick-pick/trio',
     icon: 'i-lucide-users-round',
     color: 'success',
-    description: 'Balanced 3-hero teams with optimal role distribution and team bonuses.',
+    description: t('home.tools.trio_desc'),
   },
   {
-    name: 'Quadro (4v4)',
+    name: t('home.tools.quadro'),
     path: '/quick-pick/quadro',
     icon: 'i-lucide-user-plus',
     color: 'secondary',
-    description: 'Expanded 4-player parties with advanced role selection and counter-picks.',
+    description: t('home.tools.quadro_desc'),
   },
   {
-    name: 'Full Team (6v6)',
+    name: t('home.tools.full_team'),
     path: '/quick-pick/team',
     icon: 'i-lucide-shield',
     color: 'warning',
-    description: 'Complete 6-hero lineups based on player preferences, tiers, and classes.',
+    description: t('home.tools.full_team_desc'),
   },
   {
-    name: 'Team-Ups',
+    name: t('home.tools.team_ups'),
     path: '/quick-pick/teamups',
     icon: 'i-lucide-flame',
     color: 'error',
-    description:
-      'Theoretically strongest team compositions based on current meta and hero strength.',
+    description: t('home.tools.team_ups_desc'),
   },
   {
-    name: 'Data Base',
+    name: t('home.tools.data_base'),
     path: '/data-base',
     icon: 'i-lucide-database',
     color: 'neutral',
-    description: 'Browse all heroes, their roles, classes, tiers, and detailed statistics.',
+    description: t('home.tools.data_base_desc'),
   },
 ] as const
 
 const steps = [
   {
     icon: 'i-lucide-user-plus',
-    title: 'Select Your Heroes',
-    description: "Mark heroes you want to play with and enemies you're facing.",
+    title: t('home.how_it_works.steps.select.title'),
+    description: t('home.how_it_works.steps.select.desc'),
   },
   {
     icon: 'i-lucide-list-filter',
-    title: 'Choose Roles',
-    description: 'Specify how many Supports, Damage, and Tanks you need.',
+    title: t('home.how_it_works.steps.roles.title'),
+    description: t('home.how_it_works.steps.roles.desc'),
   },
   {
     icon: 'i-lucide-sliders-horizontal',
-    title: 'Set Parameters',
-    description: 'Enable synergies, tiers, counter-picks, and class weights.',
+    title: t('home.how_it_works.steps.params.title'),
+    description: t('home.how_it_works.steps.params.desc'),
   },
   {
     icon: 'i-lucide-wand-2',
-    title: 'Generate Team',
-    description: 'Get AI-powered recommendations with detailed scoring.',
+    title: t('home.how_it_works.steps.generate.title'),
+    description: t('home.how_it_works.steps.generate.desc'),
   },
 ]
 
 const features = [
   {
     icon: 'i-lucide-brain',
-    title: 'AI-Powered',
-    description:
-      'Smart algorithms analyze thousands of combinations to find the best team for your needs.',
+    title: t('home.features.ai.title'),
+    description: t('home.features.ai.desc'),
   },
   {
     icon: 'i-lucide-trending-up',
-    title: 'Meta-Aware',
-    description:
-      'Stay competitive with up-to-date tier lists, hero strengths, and current meta strategies.',
+    title: t('home.features.meta.title'),
+    description: t('home.features.meta.desc'),
   },
   {
     icon: 'i-lucide-sliders-horizontal',
-    title: 'Fully Customizable',
-    description:
-      'Fine-tune every aspect: synergies, counter-picks, class weights, and role distributions.',
+    title: t('home.features.custom.title'),
+    description: t('home.features.custom.desc'),
   },
 ]
 </script>
 
 <template>
   <div class="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-300">
-    <header
-      class="sticky top-0 z-50 w-full border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md"
-    >
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <!-- Логотип / Бренд -->
-        <NuxtLink to="/" class="flex items-center gap-2.5 group">
-          <div
-            class="size-9 rounded-xl bg-primary-500/10 dark:bg-primary-500/20 flex items-center justify-center transition-colors group-hover:bg-primary-500/20 dark:group-hover:bg-primary-500/30"
-          >
-            <UIcon name="i-lucide-shield" class="size-5 text-primary-600 dark:text-primary-400" />
-          </div>
-          <span
-            class="font-bold text-lg text-gray-900 dark:text-white tracking-tight group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors"
-          >
-            MetaRivals
-          </span>
-        </NuxtLink>
-
-        <ThemeToggle />
-      </div>
-    </header>
-
     <!-- Hero -->
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-20 text-center">
       <div
         class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 mb-5 bg-primary-50 dark:bg-primary-950/30 px-3 py-1 rounded-full border border-primary-100 dark:border-primary-900"
       >
         <UIcon name="i-lucide-sparkles" class="size-3.5" />
-        Marvel Rivals Team Builder
+        {{ $t('home.hero.badge') }}
       </div>
-
       <h1
         class="text-4xl sm:text-5xl font-semibold tracking-tight text-gray-900 dark:text-white mb-5"
       >
-        Build your perfect team
+        {{ $t('home.hero.title') }}
       </h1>
-
       <p class="text-lg text-gray-500 dark:text-gray-400 max-w-xl mx-auto mb-10">
-        Generate optimal Marvel Rivals lineups based on synergies, tiers, counter-picks and the
-        current meta.
+        {{ $t('home.hero.subtitle') }}
+        <NuxtLink
+          target="_blank"
+          rel="noopener noreferrer"
+          to="https://boosty.to/metarivals/donate"
+          class="text-lg text-green-600 dark:text-green-300 mx-auto mb-20 font-semibold"
+        >
+          {{ $t('home.hero.boosty') }}
+        </NuxtLink>
       </p>
-
       <div class="flex flex-col sm:flex-row gap-3 justify-center">
         <UButton to="/quick-pick" size="lg" color="primary" trailing-icon="i-lucide-arrow-right">
-          Start building
+          {{ $t('home.hero.start') }}
         </UButton>
         <UButton
           to="/data-base"
@@ -153,7 +132,7 @@ const features = [
           variant="outline"
           icon="i-lucide-database"
         >
-          Browse heroes
+          {{ $t('home.hero.browse') }}
         </UButton>
       </div>
     </div>
@@ -164,7 +143,7 @@ const features = [
         <h2
           class="text-sm font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide text-center mb-10"
         >
-          How it works
+          {{ $t('home.how_it_works.title') }}
         </h2>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-8">
           <div v-for="step in steps" :key="step.title" class="text-center">
@@ -188,12 +167,11 @@ const features = [
     <div class="border-t border-gray-100 dark:border-gray-900">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <h2 class="text-2xl font-semibold text-gray-900 dark:text-white text-center mb-2">
-          Team building tools
+          {{ $t('home.tools.title') }}
         </h2>
         <p class="text-center text-gray-500 dark:text-gray-400 mb-10 max-w-lg mx-auto">
-          Pick the mode that fits your party size.
+          {{ $t('home.tools.subtitle') }}
         </p>
-
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <NuxtLink v-for="tool in tools" :key="tool.name" :to="tool.path" class="group">
             <UCard
@@ -246,13 +224,13 @@ const features = [
     <div class="border-t border-gray-100 dark:border-gray-900">
       <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
         <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-3">
-          Ready to build your dream team?
+          {{ $t('home.cta.title') }}
         </h2>
         <p class="text-gray-500 dark:text-gray-400 mb-8">
-          Free, fast, and updated with the current meta.
+          {{ $t('home.cta.subtitle') }}
         </p>
         <UButton to="/quick-pick" size="lg" color="primary" trailing-icon="i-lucide-arrow-right">
-          Get started
+          {{ $t('home.cta.button') }}
         </UButton>
       </div>
     </div>
@@ -262,7 +240,7 @@ const features = [
       <div
         class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-gray-400 dark:text-gray-600"
       >
-        MetaRivals · Marvel Rivals Team Builder
+        {{ $t('home.footer') }}
       </div>
     </footer>
   </div>

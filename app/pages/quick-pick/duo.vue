@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { RoleType } from '~/types/sheets'
 
+const { t } = useI18n()
+
 interface DuoResult {
   heroA: string
   roleA: RoleType | null
@@ -23,10 +25,10 @@ async function loadDuos() {
   isLoading.value = true
   error.value = null
   try {
-    const res = await $fetch<{ duos: DuoResult[] }>('/api/teamups') // или ваш endpoint для дуо
+    const res = await $fetch<{ duos: DuoResult[] }>('/api/teamups')
     duos.value = res.duos
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to load duos'
+    error.value = e instanceof Error ? e.message : t('teamups.error_load')
   } finally {
     isLoading.value = false
   }
@@ -34,17 +36,12 @@ async function loadDuos() {
 
 onMounted(loadDuos)
 
-const roleLabels: Record<RoleType, string> = {
-  sup: 'Support',
-  dps: 'Damage',
-  tnk: 'Tank',
-}
-
-const roleColors: Record<RoleType, string> = {
-  sup: 'success',
-  dps: 'error',
-  tnk: 'info',
-}
+const roleLabels = computed<Record<RoleType, string>>(() => ({
+  sup: t('common.role_support'),
+  dps: t('common.role_damage'),
+  tnk: t('common.role_tank'),
+}))
+const roleColors: Record<RoleType, string> = { sup: 'success', dps: 'error', tnk: 'info' }
 
 const gradeStyles: Record<string, { label: string; class: string }> = {
   SA: {
@@ -60,16 +57,15 @@ function heroInitial(name: string) {
   return name.trim().charAt(0).toUpperCase()
 }
 
-// --- Filters ---
 const selectedRoleA = ref<'all' | RoleType>('all')
 const selectedRoleB = ref<'all' | RoleType>('all')
 
-const roleFilterOptions = [
-  { label: 'All roles', value: 'all' },
-  { label: 'Support', value: 'sup' },
-  { label: 'Damage', value: 'dps' },
-  { label: 'Tank', value: 'tnk' },
-]
+const roleFilterOptions = computed(() => [
+  { label: t('common.all_roles'), value: 'all' },
+  { label: t('common.role_support'), value: 'sup' },
+  { label: t('common.role_damage'), value: 'dps' },
+  { label: t('common.role_tank'), value: 'tnk' },
+])
 
 const {
   filteredItems: filteredDuos,
@@ -80,47 +76,34 @@ const {
 
 <template>
   <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <div class="flex justify-between">
-      <NuxtLink
-        to="/"
-        class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group w-fit"
-      >
-        <UIcon
-          name="i-lucide-arrow-left"
-          class="size-4 transition-transform group-hover:-translate-x-1"
-        />
-        Back to Home
-      </NuxtLink>
-      <ThemeToggle />
-    </div>
     <header class="mb-8 text-center">
       <div
         class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 mb-3"
       >
-        <UIcon name="i-lucide-users" class="size-3.5" />
-        Current meta
+        <UIcon name="i-lucide-users" class="size-3.5" /> {{ $t('common.current_meta') }}
       </div>
-      <h1 class="text-3xl font-semibold text-gray-900 dark:text-white mb-2">Best Duos</h1>
-      <p class="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
-        The strongest hero duos right now, ranked by synergy grade, hero tiers, and role weight.
-      </p>
+      <h1 class="text-3xl font-semibold text-gray-900 dark:text-white mb-2">
+        {{ $t('duo.title') }}
+      </h1>
+      <p class="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">{{ $t('duo.subtitle') }}</p>
     </header>
 
-    <!-- Filters -->
     <div
       v-if="!isLoading && !error && duos.length"
       class="flex flex-wrap items-center justify-center gap-3 mb-8"
     >
       <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Hero A:</span>
+        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">{{
+          $t('common.hero_a')
+        }}</span>
         <USelect v-model="selectedRoleA" :items="roleFilterOptions" class="w-36" />
       </div>
-
       <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Hero B:</span>
+        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">{{
+          $t('common.hero_b')
+        }}</span>
         <USelect v-model="selectedRoleB" :items="roleFilterOptions" class="w-36" />
       </div>
-
       <UButton
         v-if="hasActiveFilters"
         color="neutral"
@@ -129,20 +112,17 @@ const {
         icon="i-lucide-rotate-ccw"
         @click="resetFilters"
       >
-        Reset
+        {{ $t('common.reset') }}
       </UButton>
     </div>
 
-    <!-- Loading -->
     <div
       v-if="isLoading"
       class="flex flex-col items-center justify-center py-20 text-gray-500 dark:text-gray-400"
     >
       <UIcon name="i-lucide-loader-2" class="animate-spin size-8 mb-4" />
-      <p>Calculating best duos...</p>
+      <p>{{ $t('common.calculating', { type: 'duos' }) }}</p>
     </div>
-
-    <!-- Error -->
     <UAlert
       v-else-if="error"
       color="error"
@@ -151,22 +131,21 @@ const {
       icon="i-lucide-alert-triangle"
     >
       <template #actions>
-        <UButton color="error" variant="outline" size="xs" @click="loadDuos">Retry</UButton>
+        <UButton color="error" variant="outline" size="xs" @click="loadDuos">{{
+          $t('common.retry')
+        }}</UButton>
       </template>
     </UAlert>
-
-    <!-- Empty states -->
     <div v-else-if="!duos.length" class="text-center py-20 text-gray-500 dark:text-gray-400">
-      No duo data found.
+      {{ $t('common.no_data', { type: 'duos' }) }}
     </div>
     <div
       v-else-if="!filteredDuos.length"
       class="text-center py-20 text-gray-500 dark:text-gray-400"
     >
-      No duos match these filters.
+      {{ $t('common.no_match', { type: 'duos' }) }}
     </div>
 
-    <!-- Duo grid -->
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <UCard
         v-for="(duo, index) in filteredDuos"
@@ -179,9 +158,7 @@ const {
         >
           #{{ index + 1 }}
         </div>
-
         <div class="flex items-center justify-center gap-3 mb-4">
-          <!-- Hero A -->
           <div class="flex flex-col items-center text-center w-24">
             <div
               class="size-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2"
@@ -200,14 +177,10 @@ const {
               variant="subtle"
               size="xs"
               class="mt-1"
+              >{{ roleLabels[duo.roleA] }}</UBadge
             >
-              {{ roleLabels[duo.roleA] }}
-            </UBadge>
           </div>
-
           <UIcon name="i-lucide-plus" class="size-4 text-gray-300 dark:text-gray-700 shrink-0" />
-
-          <!-- Hero B -->
           <div class="flex flex-col items-center text-center w-24">
             <div
               class="size-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2"
@@ -226,12 +199,10 @@ const {
               variant="subtle"
               size="xs"
               class="mt-1"
+              >{{ roleLabels[duo.roleB] }}</UBadge
             >
-              {{ roleLabels[duo.roleB] }}
-            </UBadge>
           </div>
         </div>
-
         <div
           class="flex items-center justify-between border-t border-gray-100 dark:border-gray-800 pt-3"
         >
@@ -242,12 +213,14 @@ const {
               'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
             "
           >
-            Synergy {{ gradeStyles[duo.grade]?.label || duo.grade }}
+            {{ $t('duo.synergy_grade', { grade: gradeStyles[duo.grade]?.label || duo.grade }) }}
           </span>
-          <span class="text-xs text-gray-400 dark:text-gray-500">
-            Score:
-            <span class="font-semibold text-gray-700 dark:text-gray-300">{{ duo.totalScore }}</span>
-          </span>
+          <span class="text-xs text-gray-400 dark:text-gray-500"
+            >{{ $t('common.score') }}
+            <span class="font-semibold text-gray-700 dark:text-gray-300">{{
+              duo.totalScore
+            }}</span></span
+          >
         </div>
       </UCard>
     </div>

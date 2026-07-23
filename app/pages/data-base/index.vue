@@ -4,6 +4,8 @@ import type { AccordionItem, TableColumn } from '@nuxt/ui'
 import { useSheetsStore } from '~/stores/sheets'
 import { UPopover } from '#components'
 
+const { t } = useI18n()
+
 const store = useSheetsStore()
 const teamUpSearch = ref('')
 
@@ -23,42 +25,42 @@ function formatColumnName(key: string) {
 const tierLegend = [
   {
     key: 'SA',
-    label: 'Top with anchor',
+    label: t('db.tier_sa'),
     bg: 'bg-purple-100 dark:bg-purple-900/30',
     text: 'text-purple-700 dark:text-purple-300',
     border: 'border-purple-200 dark:border-purple-800',
   },
   {
     key: 'S',
-    label: 'Meta',
+    label: t('db.tier_s'),
     bg: 'bg-blue-100 dark:bg-blue-900/30',
     text: 'text-blue-700 dark:text-blue-300',
     border: 'border-blue-200 dark:border-blue-800',
   },
   {
     key: 'A',
-    label: 'Strong',
+    label: t('db.tier_a'),
     bg: 'bg-green-100 dark:bg-green-900/30',
     text: 'text-green-700 dark:text-green-300',
     border: 'border-green-200 dark:border-green-800',
   },
   {
     key: 'B',
-    label: 'Solid',
+    label: t('db.tier_b'),
     bg: 'bg-amber-100 dark:bg-amber-900/30',
     text: 'text-amber-500 dark:text-amber-200',
     border: 'border-amber-200 dark:border-amber-800',
   },
   {
     key: 'C',
-    label: 'Average',
+    label: t('db.tier_c'),
     bg: 'bg-orange-100 dark:bg-orange-900/30',
     text: 'text-orange-500 dark:text-orange-200',
     border: 'border-orange-200 dark:border-orange-800',
   },
   {
     key: 'D',
-    label: 'Weak',
+    label: t('db.tier_d'),
     bg: 'bg-red-100 dark:bg-red-900/30',
     text: 'text-red-400 dark:text-red-300',
     border: 'border-red-200 dark:border-red-800',
@@ -193,7 +195,6 @@ const teamUpColumns: TableColumn<any>[] = [
     size: 90,
     cell: ({ row }: any) => {
       const item = row.original
-      // Получаем значение максимально надежно, защищаясь от undefined/null
       const grade = String(item.grade ?? row.getValue('grade') ?? '')
         .toUpperCase()
         .trim()
@@ -255,44 +256,42 @@ const teamUpColumns: TableColumn<any>[] = [
       h('span', { class: 'font-bold text-gray-900 dark:text-white' }, row.getValue('totalScore')),
   },
 ]
-// 🎯 Вкладка Team-Ups перемещена на второе место (индекс 1)
+
 const items = computed<AccordionItem[]>(() => [
-  { label: 'All Team-Ups', icon: 'i-lucide-flame', value: 'teamUps', slot: 'teamUps' as const },
-  { label: 'Full Info', icon: 'i-lucide-table-2', value: 'fullInfo', slot: 'fullInfo' as const },
   {
-    label: 'Hero Tier List',
+    label: t('db.tab_teamups'),
+    icon: 'i-lucide-flame',
+    value: 'teamUps',
+    slot: 'teamUps' as const,
+  },
+  {
+    label: t('db.tab_fullinfo'),
+    icon: 'i-lucide-table-2',
+    value: 'fullInfo',
+    slot: 'fullInfo' as const,
+  },
+  {
+    label: t('db.tab_herotier'),
     icon: 'i-lucide-bar-chart-3',
     value: 'heroTier',
     slot: 'heroTier' as const,
   },
-  { label: 'Classes', icon: 'i-lucide-shapes', value: 'class', slot: 'class' as const },
+  { label: t('db.tab_classes'), icon: 'i-lucide-shapes', value: 'class', slot: 'class' as const },
 ])
 </script>
 
 <template>
   <div class="mx-4 sm:mx-10 lg:mx-20 px-4 sm:px-6 lg:px-8 py-10">
-    <div class="flex justify-between items-center mb-6">
-      <NuxtLink
-        to="/"
-        class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group w-fit"
-      >
-        <UIcon
-          name="i-lucide-arrow-left"
-          class="size-4 transition-transform group-hover:-translate-x-1"
-        />
-        Back to Home
-      </NuxtLink>
-      <ThemeToggle />
-    </div>
-
     <header class="mb-6">
-      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Meta Rivals: Database</h1>
+      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
+        {{ $t('db.title') }}
+      </h1>
     </header>
 
     <div class="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-      <span class="text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider"
-        >Tiers:</span
-      >
+      <span class="text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">
+        {{ $t('db.tiers_label') }}
+      </span>
       <template v-for="tier in tierLegend" :key="tier.key">
         <div class="flex items-center gap-1.5">
           <span
@@ -307,9 +306,10 @@ const items = computed<AccordionItem[]>(() => [
       <div class="flex items-center gap-1.5">
         <span
           class="inline-flex items-center justify-center w-8 h-5 rounded border font-medium text-[10px] leading-none bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700"
-          >N/A</span
         >
-        <span class="text-gray-600 dark:text-gray-400">None</span>
+          N/A
+        </span>
+        <span class="text-gray-600 dark:text-gray-400">{{ $t('db.tier_na') }}</span>
       </div>
     </div>
 
@@ -318,7 +318,7 @@ const items = computed<AccordionItem[]>(() => [
       class="flex flex-col items-center justify-center py-20 text-gray-500 dark:text-gray-400"
     >
       <UIcon name="i-lucide-loader-2" class="animate-spin size-8 mb-4" />
-      <p>Loading data from sheets...</p>
+      <p>{{ $t('db.loading') }}</p>
     </div>
 
     <UAlert
@@ -329,7 +329,9 @@ const items = computed<AccordionItem[]>(() => [
       icon="i-lucide-alert-triangle"
     >
       <template #actions>
-        <UButton color="error" variant="outline" size="xs" @click="store.loadData()">Retry</UButton>
+        <UButton color="error" variant="outline" size="xs" @click="store.loadData()">
+          {{ $t('db.retry') }}
+        </UButton>
       </template>
     </UAlert>
 
@@ -344,19 +346,16 @@ const items = computed<AccordionItem[]>(() => [
         <div class="space-y-4">
           <div class="flex items-center justify-between">
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              Hover over the
-              <span class="font-semibold text-gray-700 dark:text-gray-300">Grade</span> badge to see
-              synergy details.
+              {{ $t('db.tooltip_grade') }}
             </p>
             <UInput
               v-model="teamUpSearch"
               icon="i-lucide-search"
-              placeholder="Search hero..."
+              :placeholder="$t('db.search_placeholder')"
               class="w-64"
               size="sm"
             />
           </div>
-
           <UTable
             :data="filteredTeamUps"
             :columns="teamUpColumns"
@@ -364,12 +363,11 @@ const items = computed<AccordionItem[]>(() => [
             class="max-h-[600px]"
             :ui="{ td: 'py-3' }"
           />
-
           <p
             v-if="!filteredTeamUps || filteredTeamUps.length === 0"
             class="text-center py-10 text-gray-500 dark:text-gray-400 text-sm"
           >
-            No team-ups match your search.
+            {{ $t('db.no_results') }}
           </p>
         </div>
       </template>

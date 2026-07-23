@@ -17,6 +17,7 @@ const toggleTheme = () => {
       variant="ghost"
       size="md"
       :aria-label="`Switch to ${isDark ? 'light' : 'dark'} mode`"
+      class="cursor-pointer"
       @click="toggleTheme"
     />
     <template #fallback>

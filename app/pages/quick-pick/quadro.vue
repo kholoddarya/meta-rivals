@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { RoleType } from '~/types/sheets'
 
+const { t } = useI18n()
+
 interface QuadroResult {
   heroA: string
   roleA: RoleType | null
@@ -33,7 +35,7 @@ async function loadQuadri() {
     const res = await $fetch<{ quadri: QuadroResult[] }>('/api/quadro')
     quadri.value = res.quadri
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to load quadri'
+    error.value = e instanceof Error ? e.message : t('teamups.error_load')
   } finally {
     isLoading.value = false
   }
@@ -41,7 +43,11 @@ async function loadQuadri() {
 
 onMounted(loadQuadri)
 
-const roleLabels: Record<RoleType, string> = { sup: 'Support', dps: 'Damage', tnk: 'Tank' }
+const roleLabels = computed<Record<RoleType, string>>(() => ({
+  sup: t('common.role_support'),
+  dps: t('common.role_damage'),
+  tnk: t('common.role_tank'),
+}))
 const roleColors: Record<RoleType, string> = { sup: 'success', dps: 'error', tnk: 'info' }
 
 const gradeStyles: Record<string, { label: string; class: string }> = {
@@ -63,12 +69,12 @@ const selectedRoleB = ref<'all' | RoleType>('all')
 const selectedRoleC = ref<'all' | RoleType>('all')
 const selectedRoleD = ref<'all' | RoleType>('all')
 
-const roleFilterOptions = [
-  { label: 'All roles', value: 'all' },
-  { label: 'Support', value: 'sup' },
-  { label: 'Damage', value: 'dps' },
-  { label: 'Tank', value: 'tnk' },
-]
+const roleFilterOptions = computed(() => [
+  { label: t('common.all_roles'), value: 'all' },
+  { label: t('common.role_support'), value: 'sup' },
+  { label: t('common.role_damage'), value: 'dps' },
+  { label: t('common.role_tank'), value: 'tnk' },
+])
 
 const {
   filteredItems: filteredQuadri,
@@ -84,30 +90,16 @@ const {
 
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <div class="flex justify-between">
-      <NuxtLink
-        to="/"
-        class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors group w-fit"
-      >
-        <UIcon
-          name="i-lucide-arrow-left"
-          class="size-4 transition-transform group-hover:-translate-x-1"
-        />
-        Back to Home
-      </NuxtLink>
-      <ThemeToggle />
-    </div>
     <header class="mb-8 text-center">
       <div
         class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 mb-3"
       >
-        <UIcon name="i-lucide-user-plus" class="size-3.5" />
-        Current meta
+        <UIcon name="i-lucide-user-plus" class="size-3.5" /> {{ $t('common.current_meta') }}
       </div>
-      <h1 class="text-3xl font-semibold text-gray-900 dark:text-white mb-2">Best Quadri</h1>
-      <p class="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
-        Two powerful duos combined into a 4-hero squad. Each pair has its own synergy grade.
-      </p>
+      <h1 class="text-3xl font-semibold text-gray-900 dark:text-white mb-2">
+        {{ $t('quadro.title') }}
+      </h1>
+      <p class="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">{{ $t('quadro.subtitle') }}</p>
     </header>
 
     <div
@@ -115,19 +107,27 @@ const {
       class="flex flex-wrap items-center justify-center gap-3 mb-8"
     >
       <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Hero A:</span>
+        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">{{
+          $t('common.hero_a')
+        }}</span>
         <USelect v-model="selectedRoleA" :items="roleFilterOptions" class="w-36" />
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Hero B:</span>
+        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">{{
+          $t('common.hero_b')
+        }}</span>
         <USelect v-model="selectedRoleB" :items="roleFilterOptions" class="w-36" />
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Hero C:</span>
+        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">{{
+          $t('common.hero_c')
+        }}</span>
         <USelect v-model="selectedRoleC" :items="roleFilterOptions" class="w-36" />
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Hero D:</span>
+        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">{{
+          $t('common.hero_d')
+        }}</span>
         <USelect v-model="selectedRoleD" :items="roleFilterOptions" class="w-36" />
       </div>
       <UButton
@@ -137,9 +137,8 @@ const {
         size="sm"
         icon="i-lucide-rotate-ccw"
         @click="resetFilters"
+        >{{ $t('common.reset') }}</UButton
       >
-        Reset
-      </UButton>
     </div>
 
     <div
@@ -147,9 +146,8 @@ const {
       class="flex flex-col items-center justify-center py-20 text-gray-500 dark:text-gray-400"
     >
       <UIcon name="i-lucide-loader-2" class="animate-spin size-8 mb-4" />
-      <p>Calculating best quadri...</p>
+      <p>{{ $t('common.calculating', { type: 'quadri' }) }}</p>
     </div>
-
     <UAlert
       v-else-if="error"
       color="error"
@@ -157,19 +155,20 @@ const {
       :title="error"
       icon="i-lucide-alert-triangle"
     >
-      <template #actions>
-        <UButton color="error" variant="outline" size="xs" @click="loadQuadri">Retry</UButton>
-      </template>
+      <template #actions
+        ><UButton color="error" variant="outline" size="xs" @click="loadQuadri">{{
+          $t('common.retry')
+        }}</UButton></template
+      >
     </UAlert>
-
     <div v-else-if="!quadri.length" class="text-center py-20 text-gray-500 dark:text-gray-400">
-      No quadri data found.
+      {{ $t('common.no_data', { type: 'quadri' }) }}
     </div>
     <div
       v-else-if="!filteredQuadri.length"
       class="text-center py-20 text-gray-500 dark:text-gray-400"
     >
-      No quadri match these filters.
+      {{ $t('common.no_match', { type: 'quadri' }) }}
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -184,9 +183,8 @@ const {
         >
           #{{ index + 1 }}
         </div>
-
         <div class="flex items-stretch justify-center gap-3 mb-4">
-          <!-- Duo 1: A + B -->
+          <!-- Duo 1 -->
           <div class="flex flex-col items-center gap-2">
             <div class="flex items-center gap-2">
               <div class="flex flex-col items-center text-center w-20">
@@ -207,13 +205,10 @@ const {
                   variant="subtle"
                   size="xs"
                   class="mt-1"
+                  >{{ roleLabels[q.roleA] }}</UBadge
                 >
-                  {{ roleLabels[q.roleA] }}
-                </UBadge>
               </div>
-
               <UIcon name="i-lucide-link" class="size-4 text-primary-400 shrink-0" />
-
               <div class="flex flex-col items-center text-center w-20">
                 <div
                   class="size-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-base font-semibold text-gray-700 dark:text-gray-200 mb-1"
@@ -232,9 +227,8 @@ const {
                   variant="subtle"
                   size="xs"
                   class="mt-1"
+                  >{{ roleLabels[q.roleB] }}</UBadge
                 >
-                  {{ roleLabels[q.roleB] }}
-                </UBadge>
               </div>
             </div>
             <span
@@ -244,14 +238,11 @@ const {
                 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
               "
             >
-              Duo 1: {{ gradeStyles[q.gradeAB]?.label || q.gradeAB }}
+              {{ $t('common.duo_1') }} {{ gradeStyles[q.gradeAB]?.label || q.gradeAB }}
             </span>
           </div>
-
-          <!-- Divider -->
           <div class="w-px bg-gray-200 dark:bg-gray-700 self-stretch" />
-
-          <!-- Duo 2: C + D -->
+          <!-- Duo 2 -->
           <div class="flex flex-col items-center gap-2">
             <div class="flex items-center gap-2">
               <div class="flex flex-col items-center text-center w-20">
@@ -272,13 +263,10 @@ const {
                   variant="subtle"
                   size="xs"
                   class="mt-1"
+                  >{{ roleLabels[q.roleC] }}</UBadge
                 >
-                  {{ roleLabels[q.roleC] }}
-                </UBadge>
               </div>
-
               <UIcon name="i-lucide-link" class="size-4 text-primary-400 shrink-0" />
-
               <div class="flex flex-col items-center text-center w-20">
                 <div
                   class="size-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-base font-semibold text-gray-700 dark:text-gray-200 mb-1"
@@ -297,9 +285,8 @@ const {
                   variant="subtle"
                   size="xs"
                   class="mt-1"
+                  >{{ roleLabels[q.roleD] }}</UBadge
                 >
-                  {{ roleLabels[q.roleD] }}
-                </UBadge>
               </div>
             </div>
             <span
@@ -309,22 +296,25 @@ const {
                 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
               "
             >
-              Duo 2: {{ gradeStyles[q.gradeCD]?.label || q.gradeCD }}
+              {{ $t('common.duo_2') }} {{ gradeStyles[q.gradeCD]?.label || q.gradeCD }}
             </span>
           </div>
         </div>
-
         <div
           class="flex items-center justify-between border-t border-gray-100 dark:border-gray-800 pt-3"
         >
-          <span class="text-xs text-gray-400 dark:text-gray-500">
-            Synergy:
-            <span class="font-semibold text-gray-700 dark:text-gray-300">{{ q.synergyScore }}</span>
-          </span>
-          <span class="text-xs text-gray-400 dark:text-gray-500">
-            Total:
-            <span class="font-semibold text-gray-700 dark:text-gray-300">{{ q.totalScore }}</span>
-          </span>
+          <span class="text-xs text-gray-400 dark:text-gray-500"
+            >{{ $t('common.synergy') }}:
+            <span class="font-semibold text-gray-700 dark:text-gray-300">{{
+              q.synergyScore
+            }}</span></span
+          >
+          <span class="text-xs text-gray-400 dark:text-gray-500"
+            >{{ $t('common.total') }}
+            <span class="font-semibold text-gray-700 dark:text-gray-300">{{
+              q.totalScore
+            }}</span></span
+          >
         </div>
       </UCard>
     </div>
